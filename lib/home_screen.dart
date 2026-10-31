@@ -234,35 +234,125 @@ class _HomeScreenState extends State<HomeScreen> {
           _messagesOpened ? const MessagesView() : const SizedBox.shrink(),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: _InstagramBottomBar(
         selectedIndex: _tab,
-        onDestinationSelected: _selectTab,
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Updates',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: _unreadConversations > 0,
-              label: Text('$_unreadConversations'),
-              child: const Icon(Icons.chat_bubble_outline),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: _unreadConversations > 0,
-              label: Text('$_unreadConversations'),
-              child: const Icon(Icons.chat_bubble),
-            ),
-            label: 'Messages',
-          ),
-        ],
+        onTap: _selectTab,
+        unreadConversations: _unreadConversations,
       ),
+    );
+  }
+}
+
+class _InstagramBottomBar extends StatelessWidget {
+  const _InstagramBottomBar({
+    required this.selectedIndex,
+    required this.onTap,
+    required this.unreadConversations,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+  final int unreadConversations;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final activeColor = isDark ? Colors.white : Colors.black;
+    final inactiveColor = isDark ? Colors.white60 : Colors.black87;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 48,
+          child: Row(
+            children: [
+              Expanded(
+                child: _NavBarButton(
+                  icon: selectedIndex == 0 ? Icons.home : Icons.home_outlined,
+                  isSelected: selectedIndex == 0,
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                  onTap: () => onTap(0),
+                ),
+              ),
+              Expanded(
+                child: _NavBarButton(
+                  icon: Icons.search,
+                  isSelected: selectedIndex == 1,
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                  onTap: () => onTap(1),
+                ),
+              ),
+              Expanded(
+                child: _NavBarButton(
+                  icon: selectedIndex == 2 ? Icons.chat_bubble : Icons.chat_bubble_outline,
+                  isSelected: selectedIndex == 2,
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                  badgeCount: unreadConversations,
+                  onTap: () => onTap(2),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavBarButton extends StatelessWidget {
+  const _NavBarButton({
+    required this.icon,
+    required this.isSelected,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.onTap,
+    this.badgeCount = 0,
+  });
+
+  final IconData icon;
+  final bool isSelected;
+  final Color activeColor;
+  final Color inactiveColor;
+  final VoidCallback onTap;
+  final int badgeCount;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget iconWidget = Icon(
+      icon,
+      size: 26,
+      color: isSelected ? activeColor : inactiveColor,
+    );
+
+    if (badgeCount > 0) {
+      iconWidget = Badge(
+        label: Text(
+          '$badgeCount',
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFFFF3040),
+        child: iconWidget,
+      );
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Center(child: iconWidget),
     );
   }
 }
