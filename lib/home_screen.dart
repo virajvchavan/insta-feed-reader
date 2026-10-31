@@ -13,7 +13,6 @@ import 'messages_view.dart';
 import 'profile_sheet.dart';
 import 'search_view.dart';
 import 'spike_screen.dart';
-import 'summary_view.dart';
 import 'updates_view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -27,8 +26,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _titles = ['Updates', 'Summary', 'Messages', 'Search'];
-  static const _messagesTab = 2;
+  static const _titles = ['Updates', 'Messages', 'Search'];
+  static const _messagesTab = 1;
 
   static const _feed = FeedKind.following;
   bool _unreadOnly = true;
@@ -232,32 +231,14 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          FutureBuilder<Directory>(
-            future: _mediaDirectory,
-            builder: (context, directory) {
-              if (!directory.hasData) return const SizedBox.shrink();
-              return StreamBuilder<List<FeedEntry>>(
-                stream: _entries,
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const SizedBox.shrink();
-                  return SummaryView(
-                    entries: snapshot.data!,
-                    feed: _feed,
-                    mediaDirectory: directory.data!,
-                    now: DateTime.now(),
-                  );
-                },
-              );
-            },
-          ),
           _messagesOpened ? const MessagesView() : const SizedBox.shrink(),
-          SearchView(isActive: _tab == 3),
+          SearchView(isActive: _tab == 2),
         ],
       ),
       bottomNavigationBar: _FloatingInstagramBar(
         selectedIndex: _tab,
         onTap: (index) {
-          if (index == 4) {
+          if (index == 3) {
             openProfile(context, db: widget.db);
             return;
           }
@@ -329,9 +310,9 @@ class _FloatingInstagramBar extends StatelessWidget {
                   onTap: () => onTap(1),
                   child: CustomPaint(
                     size: const Size(24, 24),
-                    painter: _VideoReelsPainter(
+                    painter: _PaperPlanePainter(
                       color: iconColor,
-                      filled: selectedIndex == 1,
+                      hasUnread: unreadConversations > 0,
                     ),
                   ),
                 ),
@@ -342,22 +323,9 @@ class _FloatingInstagramBar extends StatelessWidget {
                   onTap: () => onTap(2),
                   child: CustomPaint(
                     size: const Size(24, 24),
-                    painter: _PaperPlanePainter(
-                      color: iconColor,
-                      hasUnread: unreadConversations > 0,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: _FloatingNavItem(
-                  isSelected: selectedIndex == 3,
-                  onTap: () => onTap(3),
-                  child: CustomPaint(
-                    size: const Size(24, 24),
                     painter: _SearchPainter(
                       color: iconColor,
-                      bold: selectedIndex == 3,
+                      bold: selectedIndex == 2,
                     ),
                   ),
                 ),
@@ -365,7 +333,7 @@ class _FloatingInstagramBar extends StatelessWidget {
               Expanded(
                 child: _FloatingNavItem(
                   isSelected: false,
-                  onTap: () => onTap(4),
+                  onTap: () => onTap(3),
                   child: CustomPaint(
                     size: const Size(24, 24),
                     painter: _ProfilePainter(
@@ -403,7 +371,7 @@ class _FloatingNavItem extends StatelessWidget {
       onTap: onTap,
       child: Center(
         child: Container(
-          width: 58,
+          width: 64,
           height: 44,
           decoration: isSelected
               ? BoxDecoration(
@@ -460,47 +428,6 @@ class _HomePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _HomePainter old) => color != old.color || filled != old.filled;
-}
-
-class _VideoReelsPainter extends CustomPainter {
-  const _VideoReelsPainter({required this.color, required this.filled});
-  final Color color;
-  final bool filled;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final scale = size.width / 24.0;
-    canvas.scale(scale, scale);
-
-    final rrect = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(2.2, 3.8, 19.6, 16.4),
-      const Radius.circular(5.0),
-    );
-
-    canvas.drawRRect(
-      rrect,
-      Paint()
-        ..color = color
-        ..style = filled ? PaintingStyle.fill : PaintingStyle.stroke
-        ..strokeWidth = 2.2,
-    );
-
-    final playPath = Path();
-    playPath.moveTo(9.8, 8.5);
-    playPath.lineTo(15.8, 12.0);
-    playPath.lineTo(9.8, 15.5);
-    playPath.close();
-
-    canvas.drawPath(
-      playPath,
-      Paint()
-        ..color = filled ? (color == Colors.black ? Colors.white : Colors.black) : color
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _VideoReelsPainter old) => color != old.color || filled != old.filled;
 }
 
 class _PaperPlanePainter extends CustomPainter {
