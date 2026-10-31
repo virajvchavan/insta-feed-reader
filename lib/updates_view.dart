@@ -91,6 +91,7 @@ class _UpdatesViewState extends State<UpdatesView> {
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
       child: ListView.separated(
+        padding: const EdgeInsets.only(bottom: 100),
         itemCount: visibleEntries.length,
         separatorBuilder: (_, _) => const Divider(height: 1, indent: 16, endIndent: 16),
         itemBuilder: (_, index) {

@@ -13,6 +13,7 @@ import 'messages_view.dart';
 import 'profile_sheet.dart';
 import 'search_view.dart';
 import 'spike_screen.dart';
+import 'summary_view.dart';
 import 'updates_view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -26,7 +27,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _titles = ['Updates', 'Search', 'Messages'];
+  static const _titles = ['Updates', 'Summary', 'Messages', 'Search'];
   static const _messagesTab = 2;
 
   static const _feed = FeedKind.following;
@@ -158,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       appBar: _tab == _messagesTab
           ? null
           : AppBar(
@@ -230,21 +232,45 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          SearchView(isActive: _tab == 1),
+          FutureBuilder<Directory>(
+            future: _mediaDirectory,
+            builder: (context, directory) {
+              if (!directory.hasData) return const SizedBox.shrink();
+              return StreamBuilder<List<FeedEntry>>(
+                stream: _entries,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  return SummaryView(
+                    entries: snapshot.data!,
+                    feed: _feed,
+                    mediaDirectory: directory.data!,
+                    now: DateTime.now(),
+                  );
+                },
+              );
+            },
+          ),
           _messagesOpened ? const MessagesView() : const SizedBox.shrink(),
+          SearchView(isActive: _tab == 3),
         ],
       ),
-      bottomNavigationBar: _InstagramBottomBar(
+      bottomNavigationBar: _FloatingInstagramBar(
         selectedIndex: _tab,
-        onTap: _selectTab,
+        onTap: (index) {
+          if (index == 4) {
+            openProfile(context, db: widget.db);
+            return;
+          }
+          _selectTab(index);
+        },
         unreadConversations: _unreadConversations,
       ),
     );
   }
 }
 
-class _InstagramBottomBar extends StatelessWidget {
-  const _InstagramBottomBar({
+class _FloatingInstagramBar extends StatelessWidget {
+  const _FloatingInstagramBar({
     required this.selectedIndex,
     required this.onTap,
     required this.unreadConversations,
@@ -258,51 +284,95 @@ class _InstagramBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final activeColor = isDark ? Colors.white : Colors.black;
-    final inactiveColor = isDark ? Colors.white60 : Colors.black87;
+    final iconColor = isDark ? Colors.white : Colors.black;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
-            width: 0.5,
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        child: Container(
+          height: 58,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+                blurRadius: 18,
+                spreadRadius: 0,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 48,
           child: Row(
             children: [
               Expanded(
-                child: _NavBarButton(
-                  icon: selectedIndex == 0 ? Icons.home : Icons.home_outlined,
+                child: _FloatingNavItem(
                   isSelected: selectedIndex == 0,
-                  activeColor: activeColor,
-                  inactiveColor: inactiveColor,
                   onTap: () => onTap(0),
+                  child: CustomPaint(
+                    size: const Size(24, 24),
+                    painter: _HomePainter(
+                      color: iconColor,
+                      filled: selectedIndex == 0,
+                    ),
+                  ),
                 ),
               ),
               Expanded(
-                child: _NavBarButton(
-                  icon: Icons.search,
+                child: _FloatingNavItem(
                   isSelected: selectedIndex == 1,
-                  activeColor: activeColor,
-                  inactiveColor: inactiveColor,
                   onTap: () => onTap(1),
+                  child: CustomPaint(
+                    size: const Size(24, 24),
+                    painter: _VideoReelsPainter(
+                      color: iconColor,
+                      filled: selectedIndex == 1,
+                    ),
+                  ),
                 ),
               ),
               Expanded(
-                child: _NavBarButton(
-                  icon: selectedIndex == 2 ? Icons.chat_bubble : Icons.chat_bubble_outline,
+                child: _FloatingNavItem(
                   isSelected: selectedIndex == 2,
-                  activeColor: activeColor,
-                  inactiveColor: inactiveColor,
-                  badgeCount: unreadConversations,
                   onTap: () => onTap(2),
+                  child: CustomPaint(
+                    size: const Size(24, 24),
+                    painter: _PaperPlanePainter(
+                      color: iconColor,
+                      hasUnread: unreadConversations > 0,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _FloatingNavItem(
+                  isSelected: selectedIndex == 3,
+                  onTap: () => onTap(3),
+                  child: CustomPaint(
+                    size: const Size(24, 24),
+                    painter: _SearchPainter(
+                      color: iconColor,
+                      bold: selectedIndex == 3,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _FloatingNavItem(
+                  isSelected: false,
+                  onTap: () => onTap(4),
+                  child: CustomPaint(
+                    size: const Size(24, 24),
+                    painter: _ProfilePainter(
+                      color: iconColor,
+                      bold: false,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -313,48 +383,227 @@ class _InstagramBottomBar extends StatelessWidget {
   }
 }
 
-class _NavBarButton extends StatelessWidget {
-  const _NavBarButton({
-    required this.icon,
+class _FloatingNavItem extends StatelessWidget {
+  const _FloatingNavItem({
+    required this.child,
     required this.isSelected,
-    required this.activeColor,
-    required this.inactiveColor,
     required this.onTap,
-    this.badgeCount = 0,
   });
 
-  final IconData icon;
+  final Widget child;
   final bool isSelected;
-  final Color activeColor;
-  final Color inactiveColor;
   final VoidCallback onTap;
-  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
-    Widget iconWidget = Icon(
-      icon,
-      size: 26,
-      color: isSelected ? activeColor : inactiveColor,
-    );
-
-    if (badgeCount > 0) {
-      iconWidget = Badge(
-        label: Text(
-          '$badgeCount',
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFFFF3040),
-        child: iconWidget,
-      );
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Center(child: iconWidget),
+      child: Center(
+        child: Container(
+          width: 58,
+          height: 44,
+          decoration: isSelected
+              ? BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFEFEFEF),
+                  borderRadius: BorderRadius.circular(22),
+                )
+              : null,
+          alignment: Alignment.center,
+          child: child,
+        ),
+      ),
     );
   }
+}
+
+class _HomePainter extends CustomPainter {
+  const _HomePainter({required this.color, required this.filled});
+  final Color color;
+  final bool filled;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 24.0;
+    canvas.scale(scale, scale);
+
+    final path = Path();
+    path.moveTo(12.0, 2.5);
+    path.lineTo(2.5, 10.5);
+    path.lineTo(2.5, 20.0);
+    path.arcToPoint(const Offset(4.5, 22.0), radius: const Radius.circular(2));
+    path.lineTo(9.2, 22.0);
+    path.lineTo(9.2, 14.8);
+    path.arcToPoint(const Offset(14.8, 14.8), radius: const Radius.circular(2.8));
+    path.lineTo(14.8, 22.0);
+    path.lineTo(19.5, 22.0);
+    path.arcToPoint(const Offset(21.5, 20.0), radius: const Radius.circular(2));
+    path.lineTo(21.5, 10.5);
+    path.close();
+
+    if (filled) {
+      canvas.drawPath(path, Paint()..color = color..style = PaintingStyle.fill);
+    } else {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0
+          ..strokeJoin = StrokeJoin.round
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _HomePainter old) => color != old.color || filled != old.filled;
+}
+
+class _VideoReelsPainter extends CustomPainter {
+  const _VideoReelsPainter({required this.color, required this.filled});
+  final Color color;
+  final bool filled;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 24.0;
+    canvas.scale(scale, scale);
+
+    final rrect = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(2.2, 3.8, 19.6, 16.4),
+      const Radius.circular(5.0),
+    );
+
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..color = color
+        ..style = filled ? PaintingStyle.fill : PaintingStyle.stroke
+        ..strokeWidth = 2.2,
+    );
+
+    final playPath = Path();
+    playPath.moveTo(9.8, 8.5);
+    playPath.lineTo(15.8, 12.0);
+    playPath.lineTo(9.8, 15.5);
+    playPath.close();
+
+    canvas.drawPath(
+      playPath,
+      Paint()
+        ..color = filled ? (color == Colors.black ? Colors.white : Colors.black) : color
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _VideoReelsPainter old) => color != old.color || filled != old.filled;
+}
+
+class _PaperPlanePainter extends CustomPainter {
+  const _PaperPlanePainter({required this.color, required this.hasUnread});
+  final Color color;
+  final bool hasUnread;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 24.0;
+    canvas.scale(scale, scale);
+
+    final outline = Path();
+    outline.moveTo(21.8, 2.2);
+    outline.lineTo(2.2, 9.8);
+    outline.lineTo(9.8, 14.0);
+    outline.lineTo(14.0, 21.8);
+    outline.close();
+
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawPath(outline, strokePaint);
+    canvas.drawLine(const Offset(9.8, 14.0), const Offset(21.8, 2.2), strokePaint);
+
+    if (hasUnread) {
+      final redPaint = Paint()
+        ..color = const Color(0xFFE83C4E)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(const Offset(20.5, 20.0), 3.2, redPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PaperPlanePainter old) => color != old.color || hasUnread != old.hasUnread;
+}
+
+class _SearchPainter extends CustomPainter {
+  const _SearchPainter({required this.color, required this.bold});
+  final Color color;
+  final bool bold;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 24.0;
+    canvas.scale(scale, scale);
+
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = bold ? 2.6 : 2.0
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(const Offset(10.2, 10.2), 6.8, strokePaint);
+    canvas.drawLine(const Offset(15.2, 15.2), const Offset(21.2, 21.2), strokePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SearchPainter old) => color != old.color || bold != old.bold;
+}
+
+class _ProfilePainter extends CustomPainter {
+  const _ProfilePainter({required this.color, required this.bold});
+  final Color color;
+  final bool bold;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 24.0;
+    canvas.scale(scale, scale);
+
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = bold ? 2.4 : 2.0
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(const Offset(12.0, 12.0), 9.6, strokePaint);
+
+    final headPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8;
+    canvas.drawCircle(const Offset(12.0, 9.0), 3.2, headPaint);
+
+    canvas.save();
+    final clipPath = Path()..addOval(Rect.fromCircle(center: const Offset(12.0, 12.0), radius: 8.8));
+    canvas.clipPath(clipPath);
+
+    final shoulderPath = Path();
+    shoulderPath.moveTo(5.0, 20.0);
+    shoulderPath.quadraticBezierTo(12.0, 14.0, 19.0, 20.0);
+    canvas.drawPath(shoulderPath, strokePaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ProfilePainter old) => color != old.color || bold != old.bold;
 }
 
 class _UpdatingBar extends StatelessWidget implements PreferredSizeWidget {

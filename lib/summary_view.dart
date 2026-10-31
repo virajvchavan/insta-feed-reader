@@ -72,7 +72,7 @@ class SummaryView extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
       children: [
         Text(
           'Last 24 hours · $postCount ${postCount == 1 ? 'post' : 'posts'} from ${people.length} '
