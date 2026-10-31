@@ -1734,12 +1734,479 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $StoriesTable extends Stories with TableInfo<$StoriesTable, StoredStory> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _usernameMeta = const VerificationMeta(
+    'username',
+  );
+  @override
+  late final GeneratedColumn<String> username = GeneratedColumn<String>(
+    'username',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _avatarUrlMeta = const VerificationMeta(
+    'avatarUrl',
+  );
+  @override
+  late final GeneratedColumn<String> avatarUrl = GeneratedColumn<String>(
+    'avatar_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _avatarFileMeta = const VerificationMeta(
+    'avatarFile',
+  );
+  @override
+  late final GeneratedColumn<String> avatarFile = GeneratedColumn<String>(
+    'avatar_file',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hasUnseenMeta = const VerificationMeta(
+    'hasUnseen',
+  );
+  @override
+  late final GeneratedColumn<bool> hasUnseen = GeneratedColumn<bool>(
+    'has_unseen',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("has_unseen" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    username,
+    avatarUrl,
+    avatarFile,
+    hasUnseen,
+    position,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'stories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StoredStory> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('username')) {
+      context.handle(
+        _usernameMeta,
+        username.isAcceptableOrUnknown(data['username']!, _usernameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_usernameMeta);
+    }
+    if (data.containsKey('avatar_url')) {
+      context.handle(
+        _avatarUrlMeta,
+        avatarUrl.isAcceptableOrUnknown(data['avatar_url']!, _avatarUrlMeta),
+      );
+    }
+    if (data.containsKey('avatar_file')) {
+      context.handle(
+        _avatarFileMeta,
+        avatarFile.isAcceptableOrUnknown(data['avatar_file']!, _avatarFileMeta),
+      );
+    }
+    if (data.containsKey('has_unseen')) {
+      context.handle(
+        _hasUnseenMeta,
+        hasUnseen.isAcceptableOrUnknown(data['has_unseen']!, _hasUnseenMeta),
+      );
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StoredStory map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StoredStory(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      username: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}username'],
+      )!,
+      avatarUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}avatar_url'],
+      ),
+      avatarFile: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}avatar_file'],
+      ),
+      hasUnseen: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}has_unseen'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $StoriesTable createAlias(String alias) {
+    return $StoriesTable(attachedDatabase, alias);
+  }
+}
+
+class StoredStory extends DataClass implements Insertable<StoredStory> {
+  final String id;
+  final String username;
+  final String? avatarUrl;
+  final String? avatarFile;
+  final bool hasUnseen;
+  final int position;
+  final DateTime updatedAt;
+  const StoredStory({
+    required this.id,
+    required this.username,
+    this.avatarUrl,
+    this.avatarFile,
+    required this.hasUnseen,
+    required this.position,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['username'] = Variable<String>(username);
+    if (!nullToAbsent || avatarUrl != null) {
+      map['avatar_url'] = Variable<String>(avatarUrl);
+    }
+    if (!nullToAbsent || avatarFile != null) {
+      map['avatar_file'] = Variable<String>(avatarFile);
+    }
+    map['has_unseen'] = Variable<bool>(hasUnseen);
+    map['position'] = Variable<int>(position);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  StoriesCompanion toCompanion(bool nullToAbsent) {
+    return StoriesCompanion(
+      id: Value(id),
+      username: Value(username),
+      avatarUrl: avatarUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(avatarUrl),
+      avatarFile: avatarFile == null && nullToAbsent
+          ? const Value.absent()
+          : Value(avatarFile),
+      hasUnseen: Value(hasUnseen),
+      position: Value(position),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory StoredStory.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StoredStory(
+      id: serializer.fromJson<String>(json['id']),
+      username: serializer.fromJson<String>(json['username']),
+      avatarUrl: serializer.fromJson<String?>(json['avatarUrl']),
+      avatarFile: serializer.fromJson<String?>(json['avatarFile']),
+      hasUnseen: serializer.fromJson<bool>(json['hasUnseen']),
+      position: serializer.fromJson<int>(json['position']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'username': serializer.toJson<String>(username),
+      'avatarUrl': serializer.toJson<String?>(avatarUrl),
+      'avatarFile': serializer.toJson<String?>(avatarFile),
+      'hasUnseen': serializer.toJson<bool>(hasUnseen),
+      'position': serializer.toJson<int>(position),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  StoredStory copyWith({
+    String? id,
+    String? username,
+    Value<String?> avatarUrl = const Value.absent(),
+    Value<String?> avatarFile = const Value.absent(),
+    bool? hasUnseen,
+    int? position,
+    DateTime? updatedAt,
+  }) => StoredStory(
+    id: id ?? this.id,
+    username: username ?? this.username,
+    avatarUrl: avatarUrl.present ? avatarUrl.value : this.avatarUrl,
+    avatarFile: avatarFile.present ? avatarFile.value : this.avatarFile,
+    hasUnseen: hasUnseen ?? this.hasUnseen,
+    position: position ?? this.position,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  StoredStory copyWithCompanion(StoriesCompanion data) {
+    return StoredStory(
+      id: data.id.present ? data.id.value : this.id,
+      username: data.username.present ? data.username.value : this.username,
+      avatarUrl: data.avatarUrl.present ? data.avatarUrl.value : this.avatarUrl,
+      avatarFile: data.avatarFile.present
+          ? data.avatarFile.value
+          : this.avatarFile,
+      hasUnseen: data.hasUnseen.present ? data.hasUnseen.value : this.hasUnseen,
+      position: data.position.present ? data.position.value : this.position,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StoredStory(')
+          ..write('id: $id, ')
+          ..write('username: $username, ')
+          ..write('avatarUrl: $avatarUrl, ')
+          ..write('avatarFile: $avatarFile, ')
+          ..write('hasUnseen: $hasUnseen, ')
+          ..write('position: $position, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    username,
+    avatarUrl,
+    avatarFile,
+    hasUnseen,
+    position,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StoredStory &&
+          other.id == this.id &&
+          other.username == this.username &&
+          other.avatarUrl == this.avatarUrl &&
+          other.avatarFile == this.avatarFile &&
+          other.hasUnseen == this.hasUnseen &&
+          other.position == this.position &&
+          other.updatedAt == this.updatedAt);
+}
+
+class StoriesCompanion extends UpdateCompanion<StoredStory> {
+  final Value<String> id;
+  final Value<String> username;
+  final Value<String?> avatarUrl;
+  final Value<String?> avatarFile;
+  final Value<bool> hasUnseen;
+  final Value<int> position;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const StoriesCompanion({
+    this.id = const Value.absent(),
+    this.username = const Value.absent(),
+    this.avatarUrl = const Value.absent(),
+    this.avatarFile = const Value.absent(),
+    this.hasUnseen = const Value.absent(),
+    this.position = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StoriesCompanion.insert({
+    required String id,
+    required String username,
+    this.avatarUrl = const Value.absent(),
+    this.avatarFile = const Value.absent(),
+    this.hasUnseen = const Value.absent(),
+    required int position,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       username = Value(username),
+       position = Value(position);
+  static Insertable<StoredStory> custom({
+    Expression<String>? id,
+    Expression<String>? username,
+    Expression<String>? avatarUrl,
+    Expression<String>? avatarFile,
+    Expression<bool>? hasUnseen,
+    Expression<int>? position,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (username != null) 'username': username,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
+      if (avatarFile != null) 'avatar_file': avatarFile,
+      if (hasUnseen != null) 'has_unseen': hasUnseen,
+      if (position != null) 'position': position,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StoriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? username,
+    Value<String?>? avatarUrl,
+    Value<String?>? avatarFile,
+    Value<bool>? hasUnseen,
+    Value<int>? position,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return StoriesCompanion(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      avatarFile: avatarFile ?? this.avatarFile,
+      hasUnseen: hasUnseen ?? this.hasUnseen,
+      position: position ?? this.position,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (username.present) {
+      map['username'] = Variable<String>(username.value);
+    }
+    if (avatarUrl.present) {
+      map['avatar_url'] = Variable<String>(avatarUrl.value);
+    }
+    if (avatarFile.present) {
+      map['avatar_file'] = Variable<String>(avatarFile.value);
+    }
+    if (hasUnseen.present) {
+      map['has_unseen'] = Variable<bool>(hasUnseen.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('username: $username, ')
+          ..write('avatarUrl: $avatarUrl, ')
+          ..write('avatarFile: $avatarFile, ')
+          ..write('hasUnseen: $hasUnseen, ')
+          ..write('position: $position, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $PostsTable posts = $PostsTable(this);
   late final $PostMediaTable postMedia = $PostMediaTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $StoriesTable stories = $StoriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1748,6 +2215,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     posts,
     postMedia,
     appSettings,
+    stories,
   ];
 }
 
@@ -2809,6 +3277,250 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSetting,
       PrefetchHooks Function()
     >;
+typedef $$StoriesTableCreateCompanionBuilder = StoriesCompanion Function({
+  required String id,
+  required String username,
+  Value<String?> avatarUrl,
+  Value<String?> avatarFile,
+  Value<bool> hasUnseen,
+  required int position,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+typedef $$StoriesTableUpdateCompanionBuilder = StoriesCompanion Function({
+  Value<String> id,
+  Value<String> username,
+  Value<String?> avatarUrl,
+  Value<String?> avatarFile,
+  Value<bool> hasUnseen,
+  Value<int> position,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$StoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $StoriesTable> {
+  $$StoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get avatarUrl => $composableBuilder(
+    column: $table.avatarUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get avatarFile => $composableBuilder(
+    column: $table.avatarFile,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hasUnseen => $composableBuilder(
+    column: $table.hasUnseen,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$StoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $StoriesTable> {
+  $$StoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get avatarUrl => $composableBuilder(
+    column: $table.avatarUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get avatarFile => $composableBuilder(
+    column: $table.avatarFile,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get hasUnseen => $composableBuilder(
+    column: $table.hasUnseen,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$StoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StoriesTable> {
+  $$StoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get username =>
+      $composableBuilder(column: $table.username, builder: (column) => column);
+
+  GeneratedColumn<String> get avatarUrl =>
+      $composableBuilder(column: $table.avatarUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get avatarFile => $composableBuilder(
+    column: $table.avatarFile,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get hasUnseen =>
+      $composableBuilder(column: $table.hasUnseen, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$StoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StoriesTable,
+          StoredStory,
+          $$StoriesTableFilterComposer,
+          $$StoriesTableOrderingComposer,
+          $$StoriesTableAnnotationComposer,
+          $$StoriesTableCreateCompanionBuilder,
+          $$StoriesTableUpdateCompanionBuilder,
+          (
+            StoredStory,
+            BaseReferences<_$AppDatabase, $StoriesTable, StoredStory>,
+          ),
+          StoredStory,
+          PrefetchHooks Function()
+        > {
+  $$StoriesTableTableManager(_$AppDatabase db, $StoriesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StoriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> username = const Value.absent(),
+                Value<String?> avatarUrl = const Value.absent(),
+                Value<String?> avatarFile = const Value.absent(),
+                Value<bool> hasUnseen = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StoriesCompanion(
+                id: id,
+                username: username,
+                avatarUrl: avatarUrl,
+                avatarFile: avatarFile,
+                hasUnseen: hasUnseen,
+                position: position,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String username,
+                Value<String?> avatarUrl = const Value.absent(),
+                Value<String?> avatarFile = const Value.absent(),
+                Value<bool> hasUnseen = const Value.absent(),
+                required int position,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StoriesCompanion.insert(
+                id: id,
+                username: username,
+                avatarUrl: avatarUrl,
+                avatarFile: avatarFile,
+                hasUnseen: hasUnseen,
+                position: position,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$StoriesTable, StoredStory>(table),
+                  BaseReferences<_$AppDatabase, $StoriesTable, StoredStory>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$StoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StoriesTable,
+      StoredStory,
+      $$StoriesTableFilterComposer,
+      $$StoriesTableOrderingComposer,
+      $$StoriesTableAnnotationComposer,
+      $$StoriesTableCreateCompanionBuilder,
+      $$StoriesTableUpdateCompanionBuilder,
+      (StoredStory, BaseReferences<_$AppDatabase, $StoriesTable, StoredStory>),
+      StoredStory,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2819,4 +3531,6 @@ class $AppDatabaseManager {
       $$PostMediaTableTableManager(_db, _db.postMedia);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$StoriesTableTableManager get stories =>
+      $$StoriesTableTableManager(_db, _db.stories);
 }

@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 
 import 'database.dart';
 import 'post_card.dart';
+import 'stories_tray.dart';
 
 class UpdatesView extends StatefulWidget {
   const UpdatesView({
     super.key,
+    required this.db,
     required this.entries,
     required this.mediaDirectory,
     required this.onRefresh,
@@ -18,6 +20,7 @@ class UpdatesView extends StatefulWidget {
     this.onToggleFilter,
   });
 
+  final AppDatabase db;
   final List<FeedEntry> entries;
   final Directory mediaDirectory;
   final Future<void> Function() onRefresh;
@@ -51,6 +54,10 @@ class _UpdatesViewState extends State<UpdatesView> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
+            StoriesTray(
+              db: widget.db,
+              mediaDirectory: widget.mediaDirectory,
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 64),
               child: Column(
@@ -92,51 +99,64 @@ class _UpdatesViewState extends State<UpdatesView> {
 
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
-      child: ListView.separated(
+      child: ListView.builder(
         padding: const EdgeInsets.only(bottom: 100),
-        itemCount: visibleEntries.length,
-        separatorBuilder: (_, _) => const Divider(height: 1, indent: 16, endIndent: 16),
+        itemCount: 1 + visibleEntries.length,
         itemBuilder: (_, index) {
-          final entry = visibleEntries[index];
-          return Dismissible(
-            key: ValueKey(entry.post.id),
-            direction: DismissDirection.horizontal,
-            background: Container(
-              color: Colors.green.withValues(alpha: 0.15),
-              alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: const Row(
-                children: [
-                  Icon(Icons.check, color: Colors.green),
-                  SizedBox(width: 8),
-                  Text('Mark as read', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-            secondaryBackground: Container(
-              color: Colors.green.withValues(alpha: 0.15),
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text('Mark as read', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-                  SizedBox(width: 8),
-                  Icon(Icons.check, color: Colors.green),
-                ],
-              ),
-            ),
-            onDismissed: (_) {
-              setState(() => _dismissedIds.add(entry.post.id));
-              widget.onDismiss?.call(entry);
-            },
-            child: CompactPostTile(
-              key: ValueKey(entry.post.id),
-              entry: entry,
+          if (index == 0) {
+            return StoriesTray(
+              db: widget.db,
               mediaDirectory: widget.mediaDirectory,
-              onUserTap: widget.onUserTap,
-              onPostTap: widget.onPostTap,
-            ),
+            );
+          }
+          final entryIndex = index - 1;
+          final entry = visibleEntries[entryIndex];
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (entryIndex > 0)
+                const Divider(height: 1, indent: 16, endIndent: 16),
+              Dismissible(
+                key: ValueKey(entry.post.id),
+                direction: DismissDirection.horizontal,
+                background: Container(
+                  color: Colors.green.withValues(alpha: 0.15),
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('Mark as read', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                secondaryBackground: Container(
+                  color: Colors.green.withValues(alpha: 0.15),
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text('Mark as read', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
+                      SizedBox(width: 8),
+                      Icon(Icons.check, color: Colors.green),
+                    ],
+                  ),
+                ),
+                onDismissed: (_) {
+                  setState(() => _dismissedIds.add(entry.post.id));
+                  widget.onDismiss?.call(entry);
+                },
+                child: CompactPostTile(
+                  key: ValueKey(entry.post.id),
+                  entry: entry,
+                  mediaDirectory: widget.mediaDirectory,
+                  onUserTap: widget.onUserTap,
+                  onPostTap: widget.onPostTap,
+                ),
+              ),
+            ],
           );
         },
       ),

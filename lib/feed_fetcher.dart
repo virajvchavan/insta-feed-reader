@@ -12,6 +12,7 @@ import 'feed_kind.dart';
 import 'feed_parser.dart';
 import 'inbox_parser.dart';
 import 'media_downloader.dart';
+import 'stories_parser.dart';
 
 final _blockedPath = RegExp(r'^/(accounts/login|challenge|checkpoint)');
 
@@ -148,6 +149,9 @@ class FeedFetcher {
     if (report.blockedReason == null && !report.inboxBadgeSeen) {
       await _waitUntil(() => report.inboxBadgeSeen, const Duration(seconds: 5));
     }
+    if (report.blockedReason == null && controller != null) {
+      await _extractStoriesFromDom(controller!);
+    }
     if (report.blockedReason != null) {
       report.blockedWebView = webView;
     } else {
@@ -212,6 +216,15 @@ class FeedFetcher {
         final body = message['body'];
         report.unreadConversations = body is String ? unreadConversationCount(body) : null;
         _log('inbox badge: ${report.unreadConversations} unread conversations');
+      case 'storiesTray':
+        final body = message['body'];
+        if (body is String) {
+          final parsed = parseStories(body);
+          if (parsed.isNotEmpty) {
+            _log('stories tray: received ${parsed.length} stories from hook');
+            db.saveStories(parsed);
+          }
+        }
       case 'graphqlStart':
         report.graphqlStarted++;
       case 'graphql':
@@ -278,17 +291,67 @@ class FeedFetcher {
   Future<void> _downloadMissingMedia() async {
     final avatars = await db.postsMissingAvatar();
     final images = await db.mediaMissingImage(coverOnly: true);
-    _log('downloading ${avatars.length} avatars, ${images.length} thumbnails');
+    final storyAvatars = await db.storiesMissingAvatar();
+    _log('downloading ${avatars.length} post avatars, ${storyAvatars.length} story avatars, ${images.length} thumbnails');
     await Future.wait([
       for (final post in avatars)
         _downloadFile(post.profilePicUrl!, '${post.id} avatar').then((file) async {
           if (file != null) await db.setAvatarFile(post.id, file);
+        }),
+      for (final story in storyAvatars)
+        _downloadFile(story.avatarUrl!, 'story_${story.id} avatar').then((file) async {
+          if (file != null) await db.setStoryAvatarFile(story.id, file);
         }),
       for (final media in images)
         _downloadFile(media.imageUrl!, '${media.postId}#${media.position} thumbnail').then((file) async {
           if (file != null) await db.setMediaFiles(media.postId, media.position, imageFile: file);
         }),
     ]);
+  }
+
+  Future<void> _extractStoriesFromDom(InAppWebViewController controller) async {
+    try {
+      final json = await controller.evaluateJavascript(source: '''
+(function() {
+  var stories = [];
+  var seen = {};
+  var links = document.querySelectorAll('a[href*="/stories/"], [role="menuitem"]');
+  for (var i = 0; i < links.length; i++) {
+    var el = links[i];
+    var href = el.getAttribute('href') || (el.querySelector('a') && el.querySelector('a').getAttribute('href')) || '';
+    var match = href.match(/\\/stories\\/([^\\/\\?]+)/);
+    var img = el.querySelector('img');
+    var username = match ? match[1] : null;
+    if (!username && img && img.alt) {
+      var altMatch = img.alt.match(/(.+?)['’]s profile picture/);
+      if (altMatch) username = altMatch[1];
+    }
+    if (!username || seen[username]) continue;
+    seen[username] = true;
+
+    var avatarUrl = img ? img.src : null;
+    var canvas = el.querySelector('canvas');
+    var hasUnseen = !!canvas || (el.innerHTML.indexOf('gradient') !== -1) || true;
+    stories.push({
+      id: username,
+      username: username,
+      avatarUrl: avatarUrl,
+      hasUnseen: hasUnseen
+    });
+  }
+  return JSON.stringify(stories);
+})()
+''');
+      if (json is String && json.isNotEmpty && json != '[]') {
+        final parsed = parseStories(json);
+        if (parsed.isNotEmpty) {
+          _log('extracted ${parsed.length} stories from DOM');
+          await db.saveStories(parsed);
+        }
+      }
+    } catch (e) {
+      _log('failed DOM stories extraction: $e');
+    }
   }
 
   Future<String> _stallDiagnostics(InAppWebViewController controller) async {

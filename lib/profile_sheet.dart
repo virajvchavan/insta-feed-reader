@@ -210,6 +210,21 @@ Future<void> openPostWeb(BuildContext context, String code) async {
   );
 }
 
+Future<void> openStoryWeb(BuildContext context, String username) async {
+  final url = 'https://www.instagram.com/stories/$username/';
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    enableDrag: false,
+    builder: (_) => ProfileSheet(
+      initialUrl: url,
+      title: 'Story • @$username',
+    ),
+  );
+}
+
 class ProfileSheet extends StatefulWidget {
   const ProfileSheet({
     super.key,

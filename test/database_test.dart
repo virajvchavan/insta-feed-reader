@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:insta_reader/database.dart';
 import 'package:insta_reader/feed_kind.dart';
 import 'package:insta_reader/feed_parser.dart';
+import 'package:insta_reader/stories_parser.dart';
 
 Post _post(String id, {List<Map<String, dynamic>>? carousel, int takenAt = 0}) => Post.fromMedia({
       'pk': id,
@@ -165,6 +166,43 @@ void main() {
         expect(await db.unreadConversations(), 0);
         await db.saveUnreadConversations(2);
         expect(await db.unreadConversations(), 2);
+      });
+    });
+
+    group('stories', () {
+      test('saves stories and watches them ordered by position', () async {
+        final items = [
+          const StoryItem(id: '1', username: 'alice', avatarUrl: 'http://a.jpg', hasUnseen: true),
+          const StoryItem(id: '2', username: 'bob', avatarUrl: 'http://b.jpg', hasUnseen: false),
+        ];
+        await db.saveStories(items);
+
+        final stored = await db.watchStories().first;
+        expect(stored.map((s) => s.username), ['alice', 'bob']);
+        expect(stored.map((s) => s.hasUnseen), [true, false]);
+
+        await db.markStorySeen('alice');
+        final updated = await db.watchStories().first;
+        expect(updated.first.hasUnseen, false);
+      });
+
+      test('preserves avatarFile across saves and finds missing avatars', () async {
+        await db.saveStories([
+          const StoryItem(id: '1', username: 'alice', avatarUrl: 'http://a.jpg'),
+        ]);
+
+        final missing = await db.storiesMissingAvatar();
+        expect(missing.map((s) => s.id), ['1']);
+
+        await db.setStoryAvatarFile('1', 'alice.jpg');
+        expect(await db.storiesMissingAvatar(), isEmpty);
+
+        // Re-saving stories preserves the downloaded avatar file
+        await db.saveStories([
+          const StoryItem(id: '1', username: 'alice', avatarUrl: 'http://a.jpg'),
+        ]);
+        final stored = await db.watchStories().first;
+        expect(stored.first.avatarFile, 'alice.jpg');
       });
     });
   });

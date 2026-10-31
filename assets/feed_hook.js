@@ -47,8 +47,8 @@
       : null,
   });
 
-  function isGraphql(url) {
-    return typeof url === 'string' && url.indexOf('/graphql') !== -1;
+  function isMonitored(url) {
+    return typeof url === 'string' && (url.indexOf('/graphql') !== -1 || url.indexOf('/api/v1/') !== -1);
   }
 
   function friendlyName(body) {
@@ -59,6 +59,9 @@
   function onResponse(via, url, requestBody, text) {
     report(via, url, text);
     if (friendlyName(requestBody) === 'IGDBadgeCountOffMsysQuery') send({ type: 'inboxBadge', body: text });
+    if (typeof text === 'string' && (text.indexOf('reels_tray') !== -1 || text.indexOf('xdt_api__v1__feed__reels_tray') !== -1)) {
+      send({ type: 'storiesTray', body: text });
+    }
   }
 
   function report(via, url, text) {
@@ -76,7 +79,7 @@
   window.fetch = function (input, init) {
     var url = (input && input.url) || String(input);
     var promise = originalFetch.apply(this, arguments);
-    if (isGraphql(url)) {
+    if (isMonitored(url)) {
       send({ type: 'graphqlStart', via: 'fetch' });
       var requestBody = init && init.body;
       promise.then(function (response) {
@@ -96,7 +99,7 @@
 
   XMLHttpRequest.prototype.send = function (body) {
     var xhr = this;
-    if (isGraphql(xhr.__feedHookUrl)) {
+    if (isMonitored(xhr.__feedHookUrl)) {
       send({ type: 'graphqlStart', via: 'xhr' });
       xhr.addEventListener('load', function () {
         var text = null;
@@ -123,6 +126,9 @@
       scannedScripts.add(scripts[i]);
       var text = scripts[i].textContent;
       if (text && text.indexOf(FEED_KEY) !== -1) bodies.push(text);
+      if (text && (text.indexOf('reels_tray') !== -1 || text.indexOf('xdt_api__v1__feed__reels_tray') !== -1)) {
+        send({ type: 'storiesTray', body: text });
+      }
     }
     send({ type: 'inline', phase: phase, scriptCount: scripts.length, bodies: bodies });
   }

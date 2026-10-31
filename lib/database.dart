@@ -5,6 +5,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'feed_kind.dart';
+import 'stories_parser.dart';
 import 'feed_parser.dart';
 
 part 'database.g.dart';
@@ -31,6 +32,20 @@ class Posts extends Table {
   BoolColumn get isRead => boolean().withDefault(const Constant(false))();
   TextColumn get rawJson => text()();
   DateTimeColumn get capturedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('StoredStory')
+class Stories extends Table {
+  TextColumn get id => text()();
+  TextColumn get username => text()();
+  TextColumn get avatarUrl => text().nullable()();
+  TextColumn get avatarFile => text().nullable()();
+  BoolColumn get hasUnseen => boolean().withDefault(const Constant(true))();
+  IntColumn get position => integer()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -91,7 +106,7 @@ class StoreStats {
       'images $imageFiles/$imageUrls downloaded, videos $videoFiles/$videoUrls downloaded';
 }
 
-@DriftDatabase(tables: [Posts, PostMedia, AppSettings])
+@DriftDatabase(tables: [Posts, PostMedia, AppSettings, Stories])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
       : super(executor ??
@@ -101,7 +116,7 @@ class AppDatabase extends _$AppDatabase {
             ));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -123,6 +138,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 4) {
             await m.addColumn(posts, posts.isRead);
+          }
+          if (from < 5) {
+            await m.createTable(stories);
           }
         },
       );
@@ -270,8 +288,54 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  Stream<List<StoredStory>> watchStories() {
+    return (select(stories)..orderBy([(s) => OrderingTerm.asc(s.position)])).watch();
+  }
+
+  Future<void> saveStories(List<StoryItem> items) {
+    return transaction(() async {
+      final existing = await select(stories).get();
+      final avatarFiles = {
+        for (final s in existing)
+          if (s.avatarFile != null) s.username: s.avatarFile!
+      };
+      final seenMap = {for (final s in existing) s.username: !s.hasUnseen};
+
+      await delete(stories).go();
+      for (final (position, item) in items.indexed) {
+        // If the user already opened it locally, keep it seen unless new stories arrived
+        final wasSeen = seenMap[item.username] == true;
+        final hasUnseen = item.hasUnseen && !wasSeen;
+        await into(stories).insert(StoriesCompanion.insert(
+          id: item.id,
+          username: item.username,
+          avatarUrl: Value(item.avatarUrl),
+          avatarFile: Value(avatarFiles[item.username]),
+          hasUnseen: Value(hasUnseen),
+          position: position,
+          updatedAt: Value(DateTime.now()),
+        ));
+      }
+    });
+  }
+
+  Future<void> markStorySeen(String username) {
+    return (update(stories)..where((row) => row.username.equals(username)))
+        .write(const StoriesCompanion(hasUnseen: Value(false)));
+  }
+
+  Future<List<StoredStory>> storiesMissingAvatar() {
+    return (select(stories)..where((row) => row.avatarFile.isNull() & row.avatarUrl.isNotNull())).get();
+  }
+
+  Future<void> setStoryAvatarFile(String id, String file) {
+    return (update(stories)..where((row) => row.id.equals(id)))
+        .write(StoriesCompanion(avatarFile: Value(file)));
+  }
+
   Future<void> deleteEverything() {
     return transaction(() async {
+      await delete(stories).go();
       await delete(postMedia).go();
       await delete(posts).go();
     });

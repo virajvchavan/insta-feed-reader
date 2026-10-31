@@ -219,6 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const SizedBox.shrink();
                   return UpdatesView(
+                    db: widget.db,
                     entries: snapshot.data!,
                     mediaDirectory: directory.data!,
                     onRefresh: () async => unawaited(_refresh()),
