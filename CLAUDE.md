@@ -36,7 +36,10 @@ dart run build_runner build   # after changing lib/database.dart; regenerates li
 
 - The device is an iPhone 15 on iOS 27, UDID `00008120-000625C802E1A01E`. The signing team is `VR64YX76UK`.
   Xcode is signed in and Developer Mode is on.
-- Run in the background and send the logs to a file, then watch that file:
+- **Dual Build Setup:**
+  - **Normal Build:** `com.virajchavan.instareader` ("InstaReader") in Release mode. Only rebuild and install when explicitly requested.
+  - **Dev Build:** `com.virajchavan.instareader.dev` ("InstaReader (Dev)") in Debug mode. Used for day-to-day development, hot reload/restart, and debugging.
+- Run dev build in the background and send logs to a file:
   `flutter run -d 00008120-000625C802E1A01E --debug > <scratchpad>/ios_run.log 2>&1`
 - Log prefixes are `[app]` for startup, `[refresh]` for a refresh started from the tabs, and `[spike]` for
   the debug screen.
