@@ -224,6 +224,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     onRefresh: () async => unawaited(_refresh()),
                     onUserTap: (username) => openProfile(context, username: username, db: widget.db),
                     onDismiss: _onPostDismissed,
+                    onPostTap: (entry) {
+                      if (!entry.post.isRead) {
+                        widget.db.markPostAsRead(entry.post.id, isRead: true);
+                      }
+                    },
                     unreadOnly: _unreadOnly,
                     onToggleFilter: () => _setUnreadOnly(false),
                   );

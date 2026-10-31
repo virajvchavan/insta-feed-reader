@@ -13,6 +13,7 @@ class UpdatesView extends StatefulWidget {
     required this.onRefresh,
     this.onUserTap,
     this.onDismiss,
+    this.onPostTap,
     this.unreadOnly = true,
     this.onToggleFilter,
   });
@@ -22,6 +23,7 @@ class UpdatesView extends StatefulWidget {
   final Future<void> Function() onRefresh;
   final void Function(String username)? onUserTap;
   final void Function(FeedEntry entry)? onDismiss;
+  final void Function(FeedEntry entry)? onPostTap;
   final bool unreadOnly;
   final VoidCallback? onToggleFilter;
 
@@ -133,6 +135,7 @@ class _UpdatesViewState extends State<UpdatesView> {
               entry: entry,
               mediaDirectory: widget.mediaDirectory,
               onUserTap: widget.onUserTap,
+              onPostTap: widget.onPostTap,
             ),
           );
         },

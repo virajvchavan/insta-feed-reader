@@ -28,12 +28,14 @@ class PostCard extends StatelessWidget {
     required this.entry,
     required this.mediaDirectory,
     this.onUserTap,
+    this.onPostTap,
     this.fullCaption = false,
   });
 
   final FeedEntry entry;
   final Directory mediaDirectory;
   final void Function(String username)? onUserTap;
+  final void Function(FeedEntry entry)? onPostTap;
   final bool fullCaption;
 
   File? _file(String? name) => name == null ? null : File('${mediaDirectory.path}/$name');
@@ -45,6 +47,13 @@ class PostCard extends StatelessWidget {
     final username = post.username ?? 'unknown';
     final caption = post.caption ?? '';
     final permalink = post.code == null ? null : Uri.parse('https://www.instagram.com/p/${post.code}/');
+
+    void openPost() {
+      if (post.code != null) {
+        onPostTap?.call(entry);
+        openPostWeb(context, post.code!);
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +84,7 @@ class PostCard extends StatelessWidget {
             children: [
               InkWell(
                 borderRadius: BorderRadius.circular(16),
-                onTap: post.code == null ? null : () => openPostWeb(context, post.code!),
+                onTap: post.code == null ? null : openPost,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   child: Row(
@@ -90,7 +99,7 @@ class PostCard extends StatelessWidget {
               const SizedBox(width: 8),
               InkWell(
                 borderRadius: BorderRadius.circular(16),
-                onTap: post.code == null ? null : () => openPostWeb(context, post.code!),
+                onTap: post.code == null ? null : openPost,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   child: Row(
@@ -133,7 +142,7 @@ class PostCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              onTap: () => openPostWeb(context, post.code!),
+              onTap: openPost,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
@@ -411,11 +420,13 @@ class CompactPostTile extends StatelessWidget {
     required this.entry,
     required this.mediaDirectory,
     this.onUserTap,
+    this.onPostTap,
   });
 
   final FeedEntry entry;
   final Directory mediaDirectory;
   final void Function(String username)? onUserTap;
+  final void Function(FeedEntry entry)? onPostTap;
 
   File? _file(String? name) => name == null ? null : File('${mediaDirectory.path}/$name');
 
@@ -429,8 +440,15 @@ class CompactPostTile extends StatelessWidget {
     final isReel = post.productType == 'clips';
     final hasMultiple = entry.media.length > 1;
 
+    void openPost() {
+      if (post.code != null) {
+        onPostTap?.call(entry);
+        openPostWeb(context, post.code!);
+      }
+    }
+
     return InkWell(
-      onTap: post.code == null ? null : () => openPostWeb(context, post.code!),
+      onTap: post.code == null ? null : openPost,
       child: Opacity(
         opacity: post.isRead ? 0.6 : 1.0,
         child: Padding(
@@ -540,7 +558,7 @@ class CompactPostTile extends StatelessWidget {
                     children: [
                       if (post.likeCount != null) ...[
                         GestureDetector(
-                          onTap: post.code == null ? null : () => openPostWeb(context, post.code!),
+                          onTap: post.code == null ? null : openPost,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -554,7 +572,7 @@ class CompactPostTile extends StatelessWidget {
                       ],
                       if (post.commentCount != null) ...[
                         GestureDetector(
-                          onTap: post.code == null ? null : () => openPostWeb(context, post.code!),
+                          onTap: post.code == null ? null : openPost,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

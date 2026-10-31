@@ -1,4 +1,8 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:insta_reader/database.dart';
 import 'package:insta_reader/post_card.dart';
 
 void main() {
@@ -17,5 +21,35 @@ void main() {
     expect(formatCount(54), '54');
     expect(formatCount(2567), '2,567');
     expect(formatCount(1234567), '1,234,567');
+  });
+
+  testWidgets('CompactPostTile calls onPostTap when tapped', (tester) async {
+    FeedEntry? tappedEntry;
+    final post = StoredPost(
+      id: 'p1',
+      code: 'code123',
+      username: 'testuser',
+      isRead: false,
+      inFavorites: false,
+      inFollowing: true,
+      rawJson: '{}',
+      capturedAt: DateTime.now(),
+    );
+    final entry = FeedEntry(post, const []);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CompactPostTile(
+            entry: entry,
+            mediaDirectory: Directory('/tmp'),
+            onPostTap: (e) => tappedEntry = e,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(CompactPostTile));
+    expect(tappedEntry?.post.id, 'p1');
   });
 }
