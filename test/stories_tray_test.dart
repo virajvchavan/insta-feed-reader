@@ -20,7 +20,7 @@ void main() {
     });
   });
 
-  testWidgets('StoriesTray renders empty when no stories stored', (tester) async {
+  testWidgets('StoriesTray renders Your story even when no stories stored', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -33,7 +33,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(ListView), findsNothing);
+    expect(find.text('Your story'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 10));

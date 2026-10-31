@@ -128,6 +128,10 @@ class FeedFetcher {
     );
     if (!gotFirstPage) report.errors.add('no feed data within 25s of loading');
 
+    if (controller != null && report.blockedReason == null) {
+      await _fetchStoriesDirectly(controller!);
+    }
+
     var idleScrolls = 0;
     var pagesSeen = report.pages;
     while ((report.stopReason = _stopReason()) == null) {
@@ -307,6 +311,39 @@ class FeedFetcher {
           if (file != null) await db.setMediaFiles(media.postId, media.position, imageFile: file);
         }),
     ]);
+  }
+
+  Future<void> _fetchStoriesDirectly(InAppWebViewController controller) async {
+    try {
+      final json = await controller.evaluateJavascript(source: '''
+(async function() {
+  try {
+    var res = await fetch('/api/v1/feed/reels_tray/', {
+      headers: {
+        'X-IG-App-ID': '936619743392459',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'include'
+    });
+    if (res.ok) {
+      return await res.text();
+    }
+  } catch(e) {
+    return 'error: ' + e;
+  }
+  return '';
+})()
+''');
+      if (json is String && json.isNotEmpty && !json.startsWith('error:')) {
+        final parsed = parseStories(json);
+        if (parsed.isNotEmpty) {
+          _log('stories tray: fetched ${parsed.length} stories directly from API');
+          await db.saveStories(parsed);
+        }
+      }
+    } catch (e) {
+      _log('failed direct stories fetch: $e');
+    }
   }
 
   Future<void> _extractStoriesFromDom(InAppWebViewController controller) async {

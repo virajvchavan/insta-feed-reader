@@ -27,7 +27,6 @@ class StoriesTray extends StatelessWidget {
           stream: db.watchStories(),
           builder: (context, snapshot) {
             final stories = snapshot.data ?? const [];
-            if (stories.isEmpty) return const SizedBox.shrink();
 
             final bool hasOwnStory = ownUsername != null &&
                 stories.isNotEmpty &&
