@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'database.dart';
 import 'profile_sheet.dart';
+import 'story_viewer_screen.dart';
 
 class StoriesTray extends StatefulWidget {
   const StoriesTray({
@@ -67,7 +68,7 @@ class _StoriesTrayState extends State<StoriesTray> {
                           isYourStory: true,
                           onTap: () {
                             if (ownStory != null) {
-                              _onTap(context, ownStory.username);
+                              _openStories(context, stories, 0);
                             } else if (ownUsername != null && ownUsername.isNotEmpty) {
                               openProfile(context, username: ownUsername, db: widget.db);
                             } else {
@@ -85,7 +86,7 @@ class _StoriesTrayState extends State<StoriesTray> {
                         mediaDirectory: widget.mediaDirectory,
                         hasUnseen: story.hasUnseen,
                         isYourStory: false,
-                        onTap: () => _onTap(context, story.username),
+                        onTap: () => _openStories(context, otherStories, index - 1),
                       );
                     },
                   ),
@@ -103,11 +104,18 @@ class _StoriesTrayState extends State<StoriesTray> {
     );
   }
 
-  void _onTap(BuildContext context, String username) async {
+  void _openStories(BuildContext context, List<StoredStory> stories, int initialIndex) async {
+    final username = stories[initialIndex].username;
     if (widget.onStoryTap != null) {
       widget.onStoryTap!(username);
     } else {
-      await openStoryWeb(context, username);
+      await openStoriesViewer(
+        context,
+        stories: stories,
+        initialIndex: initialIndex,
+        db: widget.db,
+        mediaDirectory: widget.mediaDirectory,
+      );
     }
     await widget.db.markStorySeen(username);
   }
