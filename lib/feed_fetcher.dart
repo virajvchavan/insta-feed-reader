@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -312,30 +313,96 @@ class FeedFetcher {
 
   Future<void> _fetchStoriesDirectly(InAppWebViewController controller) async {
     try {
-      final json = await controller.evaluateJavascript(source: '''
+      final result = await controller.evaluateJavascript(source: '''
 (async function() {
+  var logs = [];
   try {
-    var res = await fetch('/api/v1/feed/reels_tray/', {
-      headers: {
-        'X-IG-App-ID': '936619743392459',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      credentials: 'include'
-    });
-    if (res.ok) {
-      return await res.text();
+    var csrf = '';
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      if (c.indexOf('csrftoken=') === 0) {
+        csrf = c.substring('csrftoken='.length);
+        break;
+      }
     }
-  } catch(e) {
-    return 'error: ' + e;
+    logs.push('csrf=' + (csrf ? csrf.substring(0, 6) + '...' : 'none'));
+
+    var endpoints = [
+      '/api/v1/feed/reels_tray/',
+      'https://www.instagram.com/api/v1/feed/reels_tray/'
+    ];
+    var appIds = ['936619743392459', '1217981644879628'];
+
+    for (var e = 0; e < endpoints.length; e++) {
+      for (var a = 0; a < appIds.length; a++) {
+        try {
+          var headers = {
+            'X-IG-App-ID': appIds[a],
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': '*/*'
+          };
+          if (csrf) headers['X-CSRFToken'] = csrf;
+
+          var res = await fetch(endpoints[e], {
+            method: 'GET',
+            headers: headers,
+            credentials: 'include'
+          });
+          logs.push(endpoints[e] + ' app=' + appIds[a] + ' -> ' + res.status);
+          if (res.ok) {
+            var text = await res.text();
+            if (text && text.indexOf('tray') !== -1) {
+              return JSON.stringify({ success: true, source: endpoints[e] + ' (' + appIds[a] + ')', body: text });
+            }
+          }
+        } catch (err) {
+          logs.push(endpoints[e] + ' err: ' + String(err));
+        }
+      }
+    }
+
+    try {
+      var rootRes = await fetch('/', { credentials: 'include' });
+      logs.push('fetch(/) -> ' + rootRes.status);
+      if (rootRes.ok) {
+        var html = await rootRes.text();
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(html, 'text/html');
+        var scripts = doc.querySelectorAll('script[type="application/json"]');
+        logs.push('fetch(/) scripts: ' + scripts.length);
+        for (var s = 0; s < scripts.length; s++) {
+          var content = scripts[s].textContent;
+          if (content && (content.indexOf('reels_tray') !== -1 || content.indexOf('xdt_api__v1__feed__reels_tray') !== -1)) {
+            return JSON.stringify({ success: true, source: 'root_html_script', body: content });
+          }
+        }
+      }
+    } catch (rootErr) {
+      logs.push('fetch(/) err: ' + String(rootErr));
+    }
+
+    return JSON.stringify({ success: false, logs: logs });
+  } catch(topErr) {
+    return JSON.stringify({ success: false, error: String(topErr), logs: logs });
   }
-  return '';
 })()
 ''');
-      if (json is String && json.isNotEmpty && !json.startsWith('error:')) {
-        final parsed = parseStories(json);
-        if (parsed.isNotEmpty) {
-          _log('stories tray: fetched ${parsed.length} stories directly from API');
-          await db.saveStories(parsed);
+      if (result is String && result.isNotEmpty) {
+        final decoded = jsonDecode(result);
+        if (decoded is Map<String, dynamic>) {
+          if (decoded['success'] == true && decoded['body'] is String) {
+            final body = decoded['body'] as String;
+            final parsed = parseStories(body);
+            if (parsed.isNotEmpty) {
+              _log('stories tray: fetched ${parsed.length} stories via ${decoded['source']}');
+              await db.saveStories(parsed);
+            } else {
+              _log('stories tray: ${decoded['source']} returned text (len=${body.length}) but 0 parsed stories');
+            }
+          } else {
+            _log('stories fetch attempt logs: ${decoded['logs']} error=${decoded['error']}');
+          }
         }
       }
     } catch (e) {

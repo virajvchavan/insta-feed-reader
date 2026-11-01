@@ -43,10 +43,12 @@ List<StoryItem> parseStories(String raw) {
 
   try {
     final decoded = jsonDecode(clean);
+    final tray = _findTrayList(decoded);
+    if (tray != null) {
+      return _parseTrayItems(tray);
+    }
     if (decoded is List) {
       return _parseDomStories(decoded);
-    } else if (decoded is Map<String, dynamic>) {
-      return _parseJsonTray(decoded);
     }
   } catch (_) {
     // Return empty on parse error
@@ -72,15 +74,12 @@ List<StoryItem> _parseDomStories(List items) {
   return result;
 }
 
-List<StoryItem> _parseJsonTray(Map<String, dynamic> root) {
-  final trayList = _findTrayList(root);
-  if (trayList == null) return const [];
-
+List<StoryItem> _parseTrayItems(List trayList) {
   final result = <StoryItem>[];
   for (final item in trayList) {
     if (item is! Map) continue;
     final map = item as Map<String, dynamic>;
-    final user = map['user'];
+    final user = map['user'] ?? map['owner'];
     if (user is! Map) continue;
 
     final userMap = user as Map<String, dynamic>;
@@ -88,11 +87,20 @@ List<StoryItem> _parseJsonTray(Map<String, dynamic> root) {
     if (username == null || username.isEmpty) continue;
 
     final id = map['id']?.toString() ?? username;
-    final avatarUrl = userMap['profile_pic_url']?.toString();
+    final avatarUrl = (userMap['profile_pic_url'] ?? userMap['profile_picture'])?.toString();
     final latest = map['latest_reel_media'] is int ? map['latest_reel_media'] as int : null;
     final seen = map['seen'] is int ? map['seen'] as int : null;
 
-    final hasUnseen = latest != null && (seen == null || seen < latest);
+    final bool hasUnseen;
+    if (latest != null && seen != null) {
+      hasUnseen = seen < latest;
+    } else if (map['has_unseen'] is bool) {
+      hasUnseen = map['has_unseen'] as bool;
+    } else if (map['seen'] == 0) {
+      hasUnseen = true;
+    } else {
+      hasUnseen = true;
+    }
 
     result.add(StoryItem(
       id: id,
@@ -106,12 +114,17 @@ List<StoryItem> _parseJsonTray(Map<String, dynamic> root) {
   return result;
 }
 
-List? _findTrayList(Map<String, dynamic> map) {
-  if (map['tray'] is List) return map['tray'] as List;
+List? _findTrayList(dynamic node) {
+  if (node is Map<String, dynamic>) {
+    if (node['tray'] is List) return node['tray'] as List;
 
-  for (final value in map.values) {
-    if (value is Map<String, dynamic>) {
+    for (final value in node.values) {
       final found = _findTrayList(value);
+      if (found != null) return found;
+    }
+  } else if (node is List) {
+    for (final item in node) {
+      final found = _findTrayList(item);
       if (found != null) return found;
     }
   }

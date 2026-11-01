@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'database.dart';
 import 'profile_sheet.dart';
 
-class StoriesTray extends StatelessWidget {
+class StoriesTray extends StatefulWidget {
   const StoriesTray({
     super.key,
     required this.db,
@@ -18,13 +18,22 @@ class StoriesTray extends StatelessWidget {
   final void Function(String username)? onStoryTap;
 
   @override
+  State<StoriesTray> createState() => _StoriesTrayState();
+}
+
+class _StoriesTrayState extends State<StoriesTray> {
+  late final Future<String?> _ownUsername = widget.db.ownUsername();
+  late final Stream<List<StoredStory>> _storiesStream = widget.db.watchStories();
+
+  @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FutureBuilder<String?>(
-      future: db.ownUsername(),
+      future: _ownUsername,
       builder: (context, ownUserSnapshot) {
         final ownUsername = ownUserSnapshot.data;
         return StreamBuilder<List<StoredStory>>(
-          stream: db.watchStories(),
+          stream: _storiesStream,
           builder: (context, snapshot) {
             final stories = snapshot.data ?? const [];
 
@@ -53,16 +62,16 @@ class StoriesTray extends StatelessWidget {
                           label: 'Your story',
                           avatarFile: ownStory?.avatarFile,
                           avatarUrl: ownStory?.avatarUrl,
-                          mediaDirectory: mediaDirectory,
+                          mediaDirectory: widget.mediaDirectory,
                           hasUnseen: ownStory?.hasUnseen ?? false,
                           isYourStory: true,
                           onTap: () {
                             if (ownStory != null) {
                               _onTap(context, ownStory.username);
                             } else if (ownUsername != null && ownUsername.isNotEmpty) {
-                              openProfile(context, username: ownUsername, db: db);
+                              openProfile(context, username: ownUsername, db: widget.db);
                             } else {
-                              openProfile(context, db: db);
+                              openProfile(context, db: widget.db);
                             }
                           },
                         );
@@ -73,7 +82,7 @@ class StoriesTray extends StatelessWidget {
                         label: story.username,
                         avatarFile: story.avatarFile,
                         avatarUrl: story.avatarUrl,
-                        mediaDirectory: mediaDirectory,
+                        mediaDirectory: widget.mediaDirectory,
                         hasUnseen: story.hasUnseen,
                         isYourStory: false,
                         onTap: () => _onTap(context, story.username),
@@ -81,7 +90,11 @@ class StoriesTray extends StatelessWidget {
                     },
                   ),
                 ),
-                const Divider(height: 1, thickness: 0.5, color: Color(0xFFEEEEEE)),
+                Divider(
+                  height: 1,
+                  thickness: 0.5,
+                  color: isDark ? const Color(0xFF262626) : const Color(0xFFEEEEEE),
+                ),
               ],
             );
           },
@@ -91,12 +104,12 @@ class StoriesTray extends StatelessWidget {
   }
 
   void _onTap(BuildContext context, String username) async {
-    if (onStoryTap != null) {
-      onStoryTap!(username);
+    if (widget.onStoryTap != null) {
+      widget.onStoryTap!(username);
     } else {
       await openStoryWeb(context, username);
     }
-    await db.markStorySeen(username);
+    await widget.db.markStorySeen(username);
   }
 }
 
