@@ -7,9 +7,17 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'browser.dart';
 import 'database.dart';
 
-const _storyViewerScript = """
+const _storyViewerScript = r"""
 (function() {
-  // 1. Prevent native iOS full-screen video player hijacking
+  // 1. Spoof referrer so Instagram treats this as an internal navigation
+  try {
+    Object.defineProperty(document, 'referrer', {
+      get: function() { return 'https://www.instagram.com/'; },
+      configurable: true
+    });
+  } catch (e) {}
+
+  // 2. Prevent native iOS full-screen video player hijacking
   if (window.HTMLVideoElement) {
     HTMLVideoElement.prototype.webkitEnterFullscreen = function() {};
     HTMLVideoElement.prototype.webkitRequestFullscreen = function() {};
@@ -30,18 +38,85 @@ const _storyViewerScript = """
     }
   }
 
+  // 3. Auto-dismiss "View as <username>?" interstitial prompt
+  var viewAsDismissed = false;
+
+  function dismissViewAs() {
+    if (viewAsDismissed) return;
+
+    // A. Check clickable buttons/elements matching "View as ..."
+    var clickables = document.querySelectorAll('button, div[role="button"], a[role="button"]');
+    for (var i = 0; i < clickables.length; i++) {
+      var el = clickables[i];
+      var text = (el.textContent || '').trim();
+      if (/\b(view as|continue as|view story|open as)\b/i.test(text) &&
+          !/\b(cancel|not now|switch|close|back)\b/i.test(text)) {
+        var parent = el.closest('div[role="dialog"], div[style*="fixed"], div[style*="absolute"], section');
+        if (parent) {
+          parent.style.opacity = '0';
+          parent.style.pointerEvents = 'none';
+          parent.style.position = 'fixed';
+          parent.style.top = '-9999px';
+        }
+        el.click();
+        viewAsDismissed = true;
+        return;
+      }
+    }
+
+    // B. Check modal dialogs containing "view as" text
+    var dialogs = document.querySelectorAll('div[role="dialog"]');
+    for (var j = 0; j < dialogs.length; j++) {
+      var dlg = dialogs[j];
+      var dlgText = (dlg.textContent || '').toLowerCase();
+      if (/\b(view as|continue as|view story as|open as)\b/i.test(dlgText)) {
+        dlg.style.opacity = '0';
+        dlg.style.pointerEvents = 'none';
+        dlg.style.position = 'fixed';
+        dlg.style.top = '-9999px';
+
+        var dlgBtns = dlg.querySelectorAll('button, div[role="button"], a[role="button"]');
+        for (var k = 0; k < dlgBtns.length; k++) {
+          var b = dlgBtns[k];
+          var bText = (b.textContent || '').trim().toLowerCase();
+          if (bText && !/\b(cancel|not now|switch|close|back)\b/i.test(bText)) {
+            b.click();
+            viewAsDismissed = true;
+            return;
+          }
+        }
+        if (dlgBtns.length > 0) {
+          dlgBtns[0].click();
+          viewAsDismissed = true;
+          return;
+        }
+      }
+    }
+  }
+
+  function onDomMutated() {
+    ensureInlineVideos();
+    dismissViewAs();
+  }
+
   ensureInlineVideos();
-  var videoObserver = new MutationObserver(ensureInlineVideos);
+  dismissViewAs();
+
+  var domObserver = new MutationObserver(onDomMutated);
   if (document.documentElement) {
-    videoObserver.observe(document.documentElement, { childList: true, subtree: true });
+    domObserver.observe(document.documentElement, { childList: true, subtree: true });
   } else {
     document.addEventListener('DOMContentLoaded', function() {
-      videoObserver.observe(document.documentElement, { childList: true, subtree: true });
+      domObserver.observe(document.documentElement, { childList: true, subtree: true });
     });
   }
-  setInterval(ensureInlineVideos, 400);
 
-  // 2. Fallback horizontal swipe detection inside webview
+  var checkInterval = setInterval(function() {
+    onDomMutated();
+  }, 80);
+  setTimeout(function() { clearInterval(checkInterval); }, 4000);
+
+  // 4. Fallback horizontal swipe detection inside webview
   var startX = 0;
   var startY = 0;
   var startTime = 0;
@@ -91,7 +166,7 @@ const _storyViewerScript = """
   window.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
   window.addEventListener('touchcancel', onTouchEnd, { passive: true, capture: true });
 
-  // 3. Hide bottom nav and back buttons
+  // 5. Hide bottom nav and back buttons
   var css = `
     div[style*="bottom: 0"]:has(a[href*="/reels/"]),
     div[style*="bottom:0"]:has(a[href*="/reels/"]),
@@ -459,7 +534,12 @@ class _StoryPageState extends State<_StoryPage> {
             settings.mediaPlaybackRequiresUserGesture = false;
 
             return InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(url)),
+              initialUrlRequest: URLRequest(
+                url: WebUri(url),
+                headers: {
+                  'Referer': 'https://www.instagram.com/',
+                },
+              ),
               initialSettings: settings,
               initialUserScripts: UnmodifiableListView([
                 UserScript(
