@@ -200,7 +200,7 @@ Map<String, dynamic>? _map(dynamic value) => value is Map ? value.cast<String, d
 
 int? _int(dynamic value) => value is num ? value.toInt() : int.tryParse('$value');
 
-const preferredImageWidth = 240;
+const preferredImageWidth = 1080;
 
 /// Picks the smallest size at least [preferredImageWidth] wide. The candidate
 /// list also carries square crops for profile grids, so only sizes with the

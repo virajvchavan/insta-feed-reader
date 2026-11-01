@@ -29,6 +29,7 @@ class PostCard extends StatelessWidget {
     required this.mediaDirectory,
     this.onUserTap,
     this.onPostTap,
+    this.onMarkRead,
     this.fullCaption = false,
   });
 
@@ -36,6 +37,7 @@ class PostCard extends StatelessWidget {
   final Directory mediaDirectory;
   final void Function(String username)? onUserTap;
   final void Function(FeedEntry entry)? onPostTap;
+  final VoidCallback? onMarkRead;
   final bool fullCaption;
 
   File? _file(String? name) => name == null ? null : File('${mediaDirectory.path}/$name');
@@ -44,6 +46,8 @@ class PostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final post = entry.post;
     final avatar = _file(post.avatarFile);
+    final avatarExists = avatar != null && avatar.existsSync();
+    final hasNetworkAvatar = post.profilePicUrl != null && post.profilePicUrl!.isNotEmpty;
     final username = post.username ?? 'unknown';
     final caption = post.caption ?? '';
     final permalink = post.code == null ? null : Uri.parse('https://www.instagram.com/p/${post.code}/');
@@ -63,8 +67,11 @@ class PostCard extends StatelessWidget {
           leading: GestureDetector(
             onTap: () => onUserTap?.call(username),
             child: CircleAvatar(
-              backgroundImage: avatar == null ? null : FileImage(avatar),
-              child: avatar == null ? Text(username.characters.first.toUpperCase()) : null,
+              backgroundImage: avatarExists
+                  ? FileImage(avatar)
+                  : (hasNetworkAvatar ? NetworkImage(post.profilePicUrl!) as ImageProvider : null),
+              onBackgroundImageError: hasNetworkAvatar ? (_, _) {} : null,
+              child: !avatarExists && !hasNetworkAvatar ? Text(username.characters.first.toUpperCase()) : null,
             ),
           ),
           title: GestureDetector(
@@ -72,6 +79,15 @@ class PostCard extends StatelessWidget {
             child: Text(username, style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
           subtitle: post.takenAt == null ? null : Text(timeAgo(post.takenAt!, DateTime.now())),
+          trailing: onMarkRead != null && !post.isRead
+              ? IconButton(
+                  icon: const Icon(Icons.check_circle_outline, size: 20),
+                  tooltip: 'Mark as read',
+                  onPressed: onMarkRead,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                )
+              : null,
         ),
         AspectRatio(
           // Instagram's feed frames posts between 4:5 portrait and 1.91:1 landscape.
@@ -242,18 +258,53 @@ class _MediaView extends StatelessWidget {
   Widget build(BuildContext context) {
     final image = fileFor(media.imageFile);
     final video = fileFor(media.videoFile);
-    final cover = image == null
-        ? const _Placeholder(icon: Icons.image_outlined)
-        : Image.file(
-            image,
-            fit: BoxFit.cover,
-            cacheWidth: (MediaQuery.sizeOf(context).width * MediaQuery.devicePixelRatioOf(context)).round(),
-          );
+    final mediaQuery = MediaQuery.maybeOf(context);
+    final cacheWidth = mediaQuery != null
+        ? (mediaQuery.size.width * mediaQuery.devicePixelRatio).round()
+        : null;
 
+    Widget buildCover() {
+      if (image != null && image.existsSync()) {
+        return Image.file(
+          image,
+          fit: BoxFit.cover,
+          cacheWidth: cacheWidth,
+          errorBuilder: (_, _, _) => _networkOrPlaceholder(cacheWidth),
+        );
+      }
+      return _networkOrPlaceholder(cacheWidth);
+    }
+
+    final cover = buildCover();
     if (video != null || media.videoUrl != null) {
       return _VideoView(file: video, url: media.videoUrl, isReel: isReel, cover: cover);
     }
     return cover;
+  }
+
+  Widget _networkOrPlaceholder(int? cacheWidth) {
+    if (media.imageUrl != null && media.imageUrl!.isNotEmpty) {
+      return Image.network(
+        media.imageUrl!,
+        fit: BoxFit.cover,
+        cacheWidth: cacheWidth,
+        errorBuilder: (_, _, _) => const _Placeholder(icon: Icons.image_outlined),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return const ColoredBox(
+            color: Color(0xFF1E1E1E),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+              ),
+            ),
+          );
+        },
+      );
+    }
+    return const _Placeholder(icon: Icons.image_outlined);
   }
 }
 
@@ -437,6 +488,10 @@ class CompactPostTile extends StatelessWidget {
     final avatar = _file(post.avatarFile);
     final firstMedia = entry.media.firstOrNull;
     final thumbnail = _file(firstMedia?.imageFile);
+    final thumbnailExists = thumbnail != null && thumbnail.existsSync();
+    final hasNetworkThumbnail = firstMedia?.imageUrl != null && firstMedia!.imageUrl!.isNotEmpty;
+    final avatarExists = avatar != null && avatar.existsSync();
+    final hasNetworkAvatar = post.profilePicUrl != null && post.profilePicUrl!.isNotEmpty;
     final isReel = post.productType == 'clips';
     final hasMultiple = entry.media.length > 1;
 
@@ -456,7 +511,7 @@ class CompactPostTile extends StatelessWidget {
           child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (thumbnail != null) ...[
+            if (thumbnailExists || hasNetworkThumbnail) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: SizedBox(
@@ -465,12 +520,21 @@ class CompactPostTile extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.file(
-                        thumbnail,
-                        fit: BoxFit.cover,
-                        cacheWidth: 150,
-                        cacheHeight: 150,
-                      ),
+                      if (thumbnailExists)
+                        Image.file(
+                          thumbnail,
+                          fit: BoxFit.cover,
+                          cacheWidth: 150,
+                          cacheHeight: 150,
+                        )
+                      else
+                        Image.network(
+                          firstMedia!.imageUrl!,
+                          fit: BoxFit.cover,
+                          cacheWidth: 150,
+                          cacheHeight: 150,
+                          errorBuilder: (_, _, _) => const ColoredBox(color: Colors.grey),
+                        ),
                       if (hasMultiple)
                         Positioned(
                           top: 4,
@@ -516,8 +580,11 @@ class CompactPostTile extends StatelessWidget {
                         onTap: () => onUserTap?.call(username),
                         child: CircleAvatar(
                           radius: 10,
-                          backgroundImage: avatar == null ? null : FileImage(avatar),
-                          child: avatar == null
+                          backgroundImage: avatarExists
+                              ? FileImage(avatar)
+                              : (hasNetworkAvatar ? NetworkImage(post.profilePicUrl!) as ImageProvider : null),
+                          onBackgroundImageError: hasNetworkAvatar ? (_, _) {} : null,
+                          child: !avatarExists && !hasNetworkAvatar
                               ? Text(username.characters.first.toUpperCase(), style: const TextStyle(fontSize: 10))
                               : null,
                         ),

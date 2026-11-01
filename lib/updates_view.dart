@@ -109,54 +109,16 @@ class _UpdatesViewState extends State<UpdatesView> {
               mediaDirectory: widget.mediaDirectory,
             );
           }
-          final entryIndex = index - 1;
-          final entry = visibleEntries[entryIndex];
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (entryIndex > 0)
-                const Divider(height: 1, indent: 16, endIndent: 16),
-              Dismissible(
-                key: ValueKey(entry.post.id),
-                direction: DismissDirection.horizontal,
-                background: Container(
-                  color: Colors.green.withValues(alpha: 0.15),
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.check, color: Colors.green),
-                      SizedBox(width: 8),
-                      Text('Mark as read', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-                secondaryBackground: Container(
-                  color: Colors.green.withValues(alpha: 0.15),
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text('Mark as read', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-                      SizedBox(width: 8),
-                      Icon(Icons.check, color: Colors.green),
-                    ],
-                  ),
-                ),
-                onDismissed: (_) {
-                  setState(() => _dismissedIds.add(entry.post.id));
-                  widget.onDismiss?.call(entry);
-                },
-                child: CompactPostTile(
-                  key: ValueKey(entry.post.id),
-                  entry: entry,
-                  mediaDirectory: widget.mediaDirectory,
-                  onUserTap: widget.onUserTap,
-                  onPostTap: widget.onPostTap,
-                ),
-              ),
-            ],
+          final entry = visibleEntries[index - 1];
+          return PostCard(
+            key: ValueKey(entry.post.id),
+            entry: entry,
+            mediaDirectory: widget.mediaDirectory,
+            onUserTap: widget.onUserTap,
+            onPostTap: widget.onPostTap,
+            onMarkRead: widget.onDismiss == null
+                ? null
+                : () => widget.onDismiss!(entry),
           );
         },
       ),

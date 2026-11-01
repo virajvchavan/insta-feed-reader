@@ -97,7 +97,7 @@ void main() {
     ]);
   });
 
-  test('picks the smallest same-shape photo at least 240 wide, skipping square crops', () {
+  test('picks the smallest same-shape photo at least 1080 wide, skipping square crops', () {
     Map<String, dynamic> candidate(int width, int height) =>
         {'url': 'https://x.fbcdn.net/${width}x$height.jpg', 'width': width, 'height': height};
     Post postWith(List<Map<String, dynamic>> candidates) =>
@@ -113,7 +113,7 @@ void main() {
     ]);
     final small = postWith([candidate(640, 1136), candidate(240, 426), candidate(640, 640)]);
 
-    expect(portrait.imageUrl, 'https://x.fbcdn.net/240x320.jpg');
-    expect(small.imageUrl, 'https://x.fbcdn.net/240x426.jpg');
+    expect(portrait.imageUrl, 'https://x.fbcdn.net/1080x1440.jpg');
+    expect(small.imageUrl, 'https://x.fbcdn.net/640x1136.jpg');
   });
 }

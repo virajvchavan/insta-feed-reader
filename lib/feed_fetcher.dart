@@ -294,9 +294,10 @@ class FeedFetcher {
 
   Future<void> _downloadMissingMedia() async {
     final avatars = await db.postsMissingAvatar();
-    final images = await db.mediaMissingImage(coverOnly: true);
     final storyAvatars = await db.storiesMissingAvatar();
-    _log('downloading ${avatars.length} post avatars, ${storyAvatars.length} story avatars, ${images.length} thumbnails');
+    if (avatars.isNotEmpty || storyAvatars.isNotEmpty) {
+      _log('downloading ${avatars.length} post avatars, ${storyAvatars.length} story avatars');
+    }
     await Future.wait([
       for (final post in avatars)
         _downloadFile(post.profilePicUrl!, '${post.id} avatar').then((file) async {
@@ -305,10 +306,6 @@ class FeedFetcher {
       for (final story in storyAvatars)
         _downloadFile(story.avatarUrl!, 'story_${story.id} avatar').then((file) async {
           if (file != null) await db.setStoryAvatarFile(story.id, file);
-        }),
-      for (final media in images)
-        _downloadFile(media.imageUrl!, '${media.postId}#${media.position} thumbnail').then((file) async {
-          if (file != null) await db.setMediaFiles(media.postId, media.position, imageFile: file);
         }),
     ]);
   }
