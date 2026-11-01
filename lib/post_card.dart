@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import 'database.dart';
@@ -50,7 +49,6 @@ class PostCard extends StatelessWidget {
     final hasNetworkAvatar = post.profilePicUrl != null && post.profilePicUrl!.isNotEmpty;
     final username = post.username ?? 'unknown';
     final caption = post.caption ?? '';
-    final permalink = post.code == null ? null : Uri.parse('https://www.instagram.com/p/${post.code}/');
 
     void openPost() {
       if (post.code != null) {
@@ -127,13 +125,6 @@ class PostCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const Spacer(),
-              if (permalink != null)
-                TextButton.icon(
-                  onPressed: () => launchUrl(permalink, mode: LaunchMode.externalApplication),
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('Open in Instagram'),
-                ),
             ],
           ),
         ),
