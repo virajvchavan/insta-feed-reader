@@ -25,7 +25,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const _titles = ['Updates', 'Messages', 'Search'];
   static const _messagesTab = 1;
 
@@ -37,14 +37,32 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _messagesOpened = false;
   bool _updating = false;
   int _unreadConversations = 0;
+  DateTime? _lastRefreshTime;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.db.unreadConversations().then((count) {
       if (mounted) setState(() => _unreadConversations = count);
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loginIfNeeded());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initAndAutoRefresh());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final now = DateTime.now();
+      if (_lastRefreshTime == null || now.difference(_lastRefreshTime!) > const Duration(minutes: 1)) {
+        _initAndAutoRefresh();
+      }
+    }
   }
 
   void _setUnreadConversations(int count) {
@@ -52,13 +70,19 @@ class _HomeScreenState extends State<HomeScreen> {
     widget.db.saveUnreadConversations(count);
   }
 
-  Future<void> _loginIfNeeded() async {
-    if (!await hasInstagramSession() && mounted) await openLogin(context);
+  Future<void> _initAndAutoRefresh() async {
+    if (!await hasInstagramSession() && mounted) {
+      await openLogin(context);
+    }
+    if (await hasInstagramSession() && mounted) {
+      _refresh(isAutoRefresh: true);
+    }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool isAutoRefresh = false}) async {
     if (_updating) return;
     setState(() => _updating = true);
+    _lastRefreshTime = DateTime.now();
     final report = await FeedFetcher(feed: _feed, db: widget.db, log: (line) => debugPrint('[refresh] $line')).run();
     debugPrint('[refresh] done: ${report.stopReason}; ${report.newPosts} new, ${report.duplicatePosts} duplicate; '
         'skipped ${report.skippedNodeTypes}; errors ${report.errors}');
@@ -72,7 +96,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     final summary = report.newPosts == 0 ? 'Up to date' : '${report.newPosts} new posts';
     final errors = report.errors.isEmpty ? '' : ' · ${report.errors.length} errors (see debug)';
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$summary$errors')));
+    if (!isAutoRefresh || report.newPosts > 0 || report.errors.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$summary$errors')));
+    }
   }
 
   void _selectTab(int tab) {
