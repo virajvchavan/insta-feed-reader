@@ -217,7 +217,7 @@ const _storyViewerScript = r"""
   window.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
   window.addEventListener('touchcancel', onTouchEnd, { passive: true, capture: true });
 
-  // 6. Hide bottom nav, back buttons, and feed elements
+  // 6. Hide bottom nav, back buttons, close buttons, and feed elements
   var css = `
     div[style*="bottom: 0"]:has(a[href*="/reels/"]),
     div[style*="bottom:0"]:has(a[href*="/reels/"]),
@@ -226,14 +226,39 @@ const _storyViewerScript = r"""
     [aria-label*="Go back" i],
     button:has([aria-label*="Back" i]),
     a:has([aria-label*="Back" i]),
+    [aria-label*="Close" i],
+    [aria-label*="close" i],
+    button:has([aria-label*="Close" i]),
+    a:has([aria-label*="Close" i]),
+    div[role="button"]:has([aria-label*="Close" i]),
+    [aria-label*="Exit" i],
+    button:has([aria-label*="Exit" i]),
+    a:has([aria-label*="Exit" i]),
     header a[href="/"],
     div[role="banner"] a[href="/"],
+    a[href="/"],
+    a[href="https://www.instagram.com/"],
+    a[href="https://www.instagram.com"],
     div[role="feed"],
     article[role="presentation"],
     main:not(:has(video)):not(:has([aria-label*="Story" i])) {
       display: none !important;
     }
   `;
+
+  document.addEventListener('click', function(e) {
+    var target = e.target;
+    if (!target) return;
+    var closeEl = target.closest(
+      '[aria-label*="Close" i], [aria-label*="Exit" i], a[href="/"], a[href="https://www.instagram.com/"], a[href="https://www.instagram.com"]'
+    );
+    if (closeEl) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      window.flutter_inappwebview.callHandler('onSwipeClose');
+    }
+  }, true);
   function apply() {
     var style = document.getElementById('__hide_story_nav');
     if (!style && (document.head || document.documentElement)) {
