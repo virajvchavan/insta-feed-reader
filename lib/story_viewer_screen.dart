@@ -38,7 +38,55 @@ const _storyViewerScript = r"""
     }
   }
 
-  // 3. Auto-dismiss "View as <username>?" interstitial prompt
+  // 3. Detect when this user's story reaches the end
+  var storyNavHandled = false;
+
+  function notifyStoryFinished() {
+    if (storyNavHandled) return;
+    storyNavHandled = true;
+    window.flutter_inappwebview.callHandler('onStoryFinished');
+  }
+
+  function checkStoryUrl(urlStr) {
+    try {
+      var currentPath = urlStr ? new URL(urlStr, location.origin).pathname : location.pathname;
+      if (currentPath === '/' || currentPath === '' || currentPath.startsWith('/explore') || currentPath.startsWith('/reels')) {
+        notifyStoryFinished();
+        return;
+      }
+      var m = currentPath.match(/\/stories\/([^\/]+)/);
+      if (m && m[1]) {
+        var targetUser = m[1].toLowerCase();
+        if (initialUsername && targetUser !== initialUsername) {
+          notifyStoryFinished();
+          return;
+        }
+      }
+    } catch (e) {}
+  }
+
+  var initialMatch = location.pathname.match(/\/stories\/([^\/]+)/);
+  var initialUsername = initialMatch ? initialMatch[1].toLowerCase() : "";
+
+  var origPush = history.pushState;
+  history.pushState = function(state, title, url) {
+    var ret = origPush.apply(this, arguments);
+    if (url) checkStoryUrl(url.toString());
+    return ret;
+  };
+
+  var origReplace = history.replaceState;
+  history.replaceState = function(state, title, url) {
+    var ret = origReplace.apply(this, arguments);
+    if (url) checkStoryUrl(url.toString());
+    return ret;
+  };
+
+  window.addEventListener('popstate', function() {
+    checkStoryUrl(location.pathname);
+  });
+
+  // 4. Auto-dismiss "View as <username>?" interstitial prompt
   var viewAsDismissed = false;
 
   function dismissViewAs() {
@@ -97,6 +145,9 @@ const _storyViewerScript = r"""
   function onDomMutated() {
     ensureInlineVideos();
     dismissViewAs();
+    if (location.pathname === '/' || (!location.pathname.startsWith('/stories/') && location.pathname !== '')) {
+      notifyStoryFinished();
+    }
   }
 
   ensureInlineVideos();
@@ -166,7 +217,7 @@ const _storyViewerScript = r"""
   window.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
   window.addEventListener('touchcancel', onTouchEnd, { passive: true, capture: true });
 
-  // 5. Hide bottom nav and back buttons
+  // 6. Hide bottom nav, back buttons, and feed elements
   var css = `
     div[style*="bottom: 0"]:has(a[href*="/reels/"]),
     div[style*="bottom:0"]:has(a[href*="/reels/"]),
@@ -176,7 +227,10 @@ const _storyViewerScript = r"""
     button:has([aria-label*="Back" i]),
     a:has([aria-label*="Back" i]),
     header a[href="/"],
-    div[role="banner"] a[href="/"] {
+    div[role="banner"] a[href="/"],
+    div[role="feed"],
+    article[role="presentation"],
+    main:not(:has(video)):not(:has([aria-label*="Story" i])) {
       display: none !important;
     }
   `;
@@ -270,7 +324,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
         duration: const Duration(milliseconds: 280),
         curve: Curves.easeInOut,
       )
-          .then((_) {
+          .whenComplete(() {
         if (mounted) _isTransitioning = false;
       });
     } else if (targetIndex >= widget.stories.length) {
@@ -414,10 +468,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
               key: ValueKey(story.username),
               username: story.username,
               isActive: index == _currentIndex,
-              onNextUser: () => _goTo(_currentIndex + 1),
-              onPrevUser: () => _goTo(_currentIndex - 1),
+              onNextUser: () => _goTo(index + 1),
+              onPrevUser: () => _goTo(index - 1),
               onClose: () => Navigator.of(context).pop(),
-              onStoryFinished: () => _goTo(_currentIndex + 1),
+              onStoryFinished: () => _goTo(index + 1),
             );
           },
         ),
@@ -562,6 +616,26 @@ class _StoryPageState extends State<_StoryPage> {
                   handlerName: 'onSwipeClose',
                   callback: (_) => widget.onClose(),
                 );
+                controller.addJavaScriptHandler(
+                  handlerName: 'onStoryFinished',
+                  callback: (_) => widget.onStoryFinished(),
+                );
+              },
+              onUpdateVisitedHistory: (controller, url, isReload) {
+                if (url != null && url.host.contains('instagram.com')) {
+                  final path = url.path;
+                  if (path == '/' || path.isEmpty || path.startsWith('/explore') || path.startsWith('/reels')) {
+                    widget.onStoryFinished();
+                  } else if (path.startsWith('/stories/')) {
+                    final segments = url.pathSegments;
+                    if (segments.length >= 2) {
+                      final targetUser = segments[1];
+                      if (targetUser.isNotEmpty && targetUser.toLowerCase() != widget.username.toLowerCase()) {
+                        widget.onStoryFinished();
+                      }
+                    }
+                  }
+                }
               },
               onLoadStop: (controller, url) {
                 if (!widget.isActive) {
