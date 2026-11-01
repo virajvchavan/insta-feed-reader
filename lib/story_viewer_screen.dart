@@ -317,6 +317,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
   void _goTo(int targetIndex) {
     if (_isTransitioning) return;
     if (targetIndex >= 0 && targetIndex < widget.stories.length) {
+      widget.db.markStorySeen(widget.stories[targetIndex].username);
       _isTransitioning = true;
       _pageController
           .animateToPage(

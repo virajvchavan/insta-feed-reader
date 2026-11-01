@@ -43,7 +43,9 @@ class _StoriesTrayState extends State<StoriesTray> {
                 stories.first.username.toLowerCase() == ownUsername.toLowerCase();
 
             final List<StoredStory> otherStories =
-                hasOwnStory ? stories.sublist(1) : stories;
+                (hasOwnStory ? stories.sublist(1) : stories)
+                    .where((s) => s.hasUnseen)
+                    .toList();
 
             final StoredStory? ownStory = hasOwnStory ? stories.first : null;
 
