@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'dart:collection';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -58,6 +58,8 @@ class FeedFetcher {
   final AppDatabase db;
   final void Function(String line) log;
   final int maxPosts;
+
+  final _storiesCompleter = Completer<void>();
   final report = FetchReport();
   final _random = Random();
   final _started = DateTime.now();
@@ -223,13 +225,20 @@ class FeedFetcher {
         _log('inbox badge: ${report.unreadConversations} unread conversations');
       case 'storiesTray':
         final body = message['body'];
+        final source = message['source'] ?? 'hook';
         if (body is String) {
           final parsed = parseStories(body);
           if (parsed.isNotEmpty) {
-            _log('stories tray: received ${parsed.length} stories from hook');
+            _log('stories tray: received ${parsed.length} stories from $source');
             db.saveStories(parsed);
+          } else {
+            _log('stories tray: received body from $source but 0 parsed stories');
           }
         }
+        if (!_storiesCompleter.isCompleted) _storiesCompleter.complete();
+      case 'storiesFailed':
+        _log('stories fetch attempt logs: ${message['logs']}');
+        if (!_storiesCompleter.isCompleted) _storiesCompleter.complete();
       case 'graphqlStart':
         report.graphqlStarted++;
       case 'graphql':
@@ -313,98 +322,105 @@ class FeedFetcher {
 
   Future<void> _fetchStoriesDirectly(InAppWebViewController controller) async {
     try {
-      final result = await controller.evaluateJavascript(source: '''
-(async function() {
-  var logs = [];
-  try {
-    var csrf = '';
-    var cookies = document.cookie.split(';');
-    for (var i = 0; i < cookies.length; i++) {
-      var c = cookies[i].trim();
-      if (c.indexOf('csrftoken=') === 0) {
-        csrf = c.substring('csrftoken='.length);
-        break;
-      }
-    }
-    logs.push('csrf=' + (csrf ? csrf.substring(0, 6) + '...' : 'none'));
+      final cookies = await CookieManager.instance().getCookies(url: WebUri('https://www.instagram.com'));
+      final csrfCookie = cookies.where((c) => c.name == 'csrftoken').firstOrNull?.value ?? '';
 
-    var endpoints = [
-      '/api/v1/feed/reels_tray/',
-      'https://www.instagram.com/api/v1/feed/reels_tray/'
-    ];
-    var appIds = ['936619743392459', '1217981644879628'];
-
-    for (var e = 0; e < endpoints.length; e++) {
-      for (var a = 0; a < appIds.length; a++) {
-        try {
-          var headers = {
-            'X-IG-App-ID': appIds[a],
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': '*/*'
-          };
-          if (csrf) headers['X-CSRFToken'] = csrf;
-
-          var res = await fetch(endpoints[e], {
-            method: 'GET',
-            headers: headers,
-            credentials: 'include'
-          });
-          logs.push(endpoints[e] + ' app=' + appIds[a] + ' -> ' + res.status);
-          if (res.ok) {
-            var text = await res.text();
-            if (text && text.indexOf('tray') !== -1) {
-              return JSON.stringify({ success: true, source: endpoints[e] + ' (' + appIds[a] + ')', body: text });
-            }
-          }
-        } catch (err) {
-          logs.push(endpoints[e] + ' err: ' + String(err));
-        }
-      }
-    }
-
+      await controller.evaluateJavascript(source: '''
+(function() {
+  (async function() {
+    var logs = [];
     try {
-      var rootRes = await fetch('/', { credentials: 'include' });
-      logs.push('fetch(/) -> ' + rootRes.status);
-      if (rootRes.ok) {
-        var html = await rootRes.text();
-        var parser = new DOMParser();
-        var doc = parser.parseFromString(html, 'text/html');
-        var scripts = doc.querySelectorAll('script[type="application/json"]');
-        logs.push('fetch(/) scripts: ' + scripts.length);
-        for (var s = 0; s < scripts.length; s++) {
-          var content = scripts[s].textContent;
-          if (content && (content.indexOf('reels_tray') !== -1 || content.indexOf('xdt_api__v1__feed__reels_tray') !== -1)) {
-            return JSON.stringify({ success: true, source: 'root_html_script', body: content });
-          }
-        }
+      var csrf = '$csrfCookie';
+      if (!csrf) {
+        var match = document.cookie.match(/csrftoken=([^;]+)/);
+        if (match) csrf = match[1];
       }
-    } catch (rootErr) {
-      logs.push('fetch(/) err: ' + String(rootErr));
-    }
+      logs.push('csrf=' + (csrf ? csrf.substring(0, 6) + '...' : 'none'));
 
-    return JSON.stringify({ success: false, logs: logs });
-  } catch(topErr) {
-    return JSON.stringify({ success: false, error: String(topErr), logs: logs });
-  }
-})()
-''');
-      if (result is String && result.isNotEmpty) {
-        final decoded = jsonDecode(result);
-        if (decoded is Map<String, dynamic>) {
-          if (decoded['success'] == true && decoded['body'] is String) {
-            final body = decoded['body'] as String;
-            final parsed = parseStories(body);
-            if (parsed.isNotEmpty) {
-              _log('stories tray: fetched ${parsed.length} stories via ${decoded['source']}');
-              await db.saveStories(parsed);
-            } else {
-              _log('stories tray: ${decoded['source']} returned text (len=${body.length}) but 0 parsed stories');
+      var endpoints = [
+        '/api/v1/feed/reels_tray/',
+        'https://www.instagram.com/api/v1/feed/reels_tray/'
+      ];
+      var appIds = ['936619743392459', '1217981644879628'];
+
+      for (var e = 0; e < endpoints.length; e++) {
+        for (var a = 0; a < appIds.length; a++) {
+          try {
+            var headers = {
+              'X-IG-App-ID': appIds[a],
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': '*/*'
+            };
+            if (csrf) headers['X-CSRFToken'] = csrf;
+
+            var res = await fetch(endpoints[e], {
+              method: 'GET',
+              headers: headers,
+              credentials: 'include'
+            });
+            logs.push(endpoints[e] + ' [' + appIds[a] + '] -> ' + res.status);
+            if (res.ok) {
+              var text = await res.text();
+              if (text && text.indexOf('tray') !== -1) {
+                window.flutter_inappwebview.callHandler('feedHook', {
+                  type: 'storiesTray',
+                  source: endpoints[e] + ' [' + appIds[a] + ']',
+                  body: text
+                });
+                return;
+              }
             }
-          } else {
-            _log('stories fetch attempt logs: ${decoded['logs']} error=${decoded['error']}');
+          } catch (err) {
+            logs.push(endpoints[e] + ' err: ' + String(err));
           }
         }
       }
+
+      // Fallback: fetch root HTML which has SSR JSON script tags
+      try {
+        var rootRes = await fetch('/', { credentials: 'include' });
+        logs.push('fetch(/) -> ' + rootRes.status);
+        if (rootRes.ok) {
+          var html = await rootRes.text();
+          var parser = new DOMParser();
+          var doc = parser.parseFromString(html, 'text/html');
+          var scripts = doc.querySelectorAll('script[type="application/json"]');
+          logs.push('fetch(/) scripts: ' + scripts.length);
+          for (var s = 0; s < scripts.length; s++) {
+            var content = scripts[s].textContent;
+            if (content && (content.indexOf('reels_tray') !== -1 || content.indexOf('xdt_api__v1__feed__reels_tray') !== -1)) {
+              window.flutter_inappwebview.callHandler('feedHook', {
+                type: 'storiesTray',
+                source: 'root_html_script',
+                body: content
+              });
+              return;
+            }
+          }
+        }
+      } catch (rootErr) {
+        logs.push('fetch(/) err: ' + String(rootErr));
+      }
+
+      window.flutter_inappwebview.callHandler('feedHook', {
+        type: 'storiesFailed',
+        logs: logs
+      });
+    } catch (topErr) {
+      logs.push('topErr: ' + String(topErr));
+      window.flutter_inappwebview.callHandler('feedHook', {
+        type: 'storiesFailed',
+        logs: logs
+      });
+    }
+  })();
+})();
+''');
+
+      await _storiesCompleter.future.timeout(
+        const Duration(seconds: 8),
+        onTimeout: () => _log('stories fetch timed out after 8s'),
+      );
     } catch (e) {
       _log('failed direct stories fetch: $e');
     }
