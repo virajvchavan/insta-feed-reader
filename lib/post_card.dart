@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import 'database.dart';
+import 'pinch_zoom.dart';
 import 'profile_sheet.dart';
 
 const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -270,7 +271,7 @@ class _MediaView extends StatelessWidget {
     if (video != null || media.videoUrl != null) {
       return _VideoView(file: video, url: media.videoUrl, isReel: isReel, cover: cover);
     }
-    return cover;
+    return PinchZoom(child: cover);
   }
 
   Widget _networkOrPlaceholder(int? cacheWidth) {
