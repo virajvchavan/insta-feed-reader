@@ -10,6 +10,7 @@ import 'feed_kind.dart';
 import 'login_screen.dart';
 import 'media_downloader.dart';
 import 'messages_view.dart';
+import 'notifications_sheet.dart';
 import 'profile_sheet.dart';
 import 'search_view.dart';
 import 'spike_screen.dart';
@@ -210,6 +211,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     )
                   : Text(_titles[_tab]),
               actions: [
+                IconButton(
+                  tooltip: 'Notifications',
+                  icon: const Icon(Icons.favorite_border),
+                  onPressed: () => openNotifications(context),
+                ),
                 if (_tab == 0) ...[
                   IconButton(
                     tooltip: 'Mark all as read',
