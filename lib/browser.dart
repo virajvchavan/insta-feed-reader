@@ -22,7 +22,8 @@ Future<InAppWebViewSettings> browserSettings() async {
   return InAppWebViewSettings(
     userAgent: await browserUserAgent(),
     requestedWithHeaderOriginAllowList: Platform.isAndroid ? <String>{} : null,
-    mediaPlaybackRequiresUserGesture: true,
+    allowsInlineMediaPlayback: true,
+    mediaPlaybackRequiresUserGesture: false,
     isInspectable: kDebugMode,
   );
 }
